@@ -299,7 +299,7 @@ export default function DeveloperInstagramProfilePage({ params }: { params: Prom
 
       {activeTab === "github" && profile.github_username && (
         <div className="max-w-3xl mx-auto">
-          <GitHubStatsCard username={profile.github_username} />
+          <GitHubStatsCard githubUsername={profile.github_username} />
         </div>
       )}
 

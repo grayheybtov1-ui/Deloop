@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { 
@@ -19,7 +19,7 @@ import { Profile, Message } from "@/types";
 import { useToast } from "@/components/Toast";
 import { timeAgo } from "@/lib/utils";
 
-export default function MessagesPage() {
+function MessagesContent() {
   const searchParams = useSearchParams();
   const targetUserId = searchParams.get("user");
   const { showToast } = useToast();
@@ -259,5 +259,17 @@ export default function MessagesPage() {
       </div>
 
     </div>
+  );
+}
+
+export default function MessagesPage() {
+  return (
+    <Suspense fallback={
+      <div className="h-96 flex items-center justify-center text-slate-400 text-sm">
+        Mesajlar yüklənir...
+      </div>
+    }>
+      <MessagesContent />
+    </Suspense>
   );
 }
