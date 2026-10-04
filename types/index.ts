@@ -90,6 +90,17 @@ export interface Notification {
   };
 }
 
+export interface Message {
+  id: string;
+  sender_id: string;
+  receiver_id: string;
+  content: string;
+  is_read: boolean;
+  created_at: string;
+  sender?: Profile;
+  receiver?: Profile;
+}
+
 export interface GitHubRepo {
   id: number;
   name: string;

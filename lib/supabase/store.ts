@@ -1,11 +1,12 @@
-import { Profile, Project, Comment, Notification, PlatformStats, DeveloperTitle } from "@/types";
-import { MOCK_PROFILES, MOCK_PROJECTS, MOCK_COMMENTS, MOCK_NOTIFICATIONS, MOCK_STATS } from "@/lib/mock-data";
+import { Profile, Project, Comment, Notification, PlatformStats, DeveloperTitle, Message } from "@/types";
+import { MOCK_PROFILES, MOCK_PROJECTS, MOCK_COMMENTS, MOCK_NOTIFICATIONS, MOCK_STATS, MOCK_MESSAGES } from "@/lib/mock-data";
 
 class LocalStore {
   private profiles: Profile[] = [...MOCK_PROFILES];
   private projects: Project[] = [...MOCK_PROJECTS];
   private comments: Comment[] = [...MOCK_COMMENTS];
   private notifications: Notification[] = [...MOCK_NOTIFICATIONS];
+  private messages: Message[] = [...MOCK_MESSAGES];
   private currentUser: Profile | null = MOCK_PROFILES[0]; // Logged in as Geray Heybetov by default
 
   constructor() {
@@ -277,6 +278,36 @@ class LocalStore {
 
   markAllNotificationsAsRead() {
     this.notifications.forEach(n => (n.is_read = true));
+  }
+
+  // DIRECT MESSAGES (DM)
+  getMessagesBetween(userAId: string, userBId: string): Message[] {
+    return this.messages.filter(
+      (m) =>
+        (m.sender_id === userAId && m.receiver_id === userBId) ||
+        (m.sender_id === userBId && m.receiver_id === userAId)
+    ).sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+  }
+
+  sendMessage(receiverId: string, content: string): Message {
+    if (!this.currentUser) throw new Error("Not logged in");
+
+    const senderProfile = this.currentUser;
+    const receiverProfile = this.profiles.find((p) => p.id === receiverId);
+
+    const newMessage: Message = {
+      id: "msg-" + Date.now(),
+      sender_id: this.currentUser.id,
+      receiver_id: receiverId,
+      content,
+      is_read: false,
+      created_at: new Date().toISOString(),
+      sender: senderProfile,
+      receiver: receiverProfile,
+    };
+
+    this.messages.push(newMessage);
+    return newMessage;
   }
 
   // STATS

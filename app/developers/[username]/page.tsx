@@ -2,39 +2,40 @@
 
 import React, { use, useState, useEffect } from "react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { 
+  Grid, 
+  Send, 
+  Settings, 
   MapPin, 
   Globe, 
   Github, 
   Linkedin, 
-  UserPlus, 
-  UserCheck, 
-  FolderGit2, 
-  Users, 
-  Edit3, 
-  Calendar,
-  Code2
+  Heart, 
+  MessageCircle, 
+  ExternalLink,
+  Code2,
+  Terminal,
+  Bookmark
 } from "lucide-react";
 
 import { Profile, Project } from "@/types";
 import { localStore } from "@/lib/supabase/store";
-import { TechBadge } from "@/components/TechBadge";
-import { ProjectCard } from "@/components/ProjectCard";
 import { GitHubStatsCard } from "@/components/GitHubStatsCard";
 import { useToast } from "@/components/Toast";
-import { formatDate } from "@/lib/utils";
+import { ProjectCard } from "@/components/ProjectCard";
 
-export default function DeveloperProfilePage({ params }: { params: Promise<{ username: string }> }) {
+export default function DeveloperInstagramProfilePage({ params }: { params: Promise<{ username: string }> }) {
   const resolvedParams = use(params);
   const username = resolvedParams.username;
+  const router = useRouter();
+  const { showToast } = useToast();
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [currentUser, setCurrentUser] = useState<Profile | null>(null);
   const [isFollowing, setIsFollowing] = useState(false);
-  const [activeTab, setActiveTab] = useState<"projects" | "github">("projects");
-  const { showToast } = useToast();
+  const [activeTab, setActiveTab] = useState<"grid" | "feed" | "github">("grid");
 
   useEffect(() => {
     const prof = localStore.getProfileByUsername(username);
@@ -50,10 +51,10 @@ export default function DeveloperProfilePage({ params }: { params: Promise<{ use
   if (!profile) {
     return (
       <div className="py-16 text-center space-y-4">
-        <h2 className="text-2xl font-bold text-slate-100">Developer Profile Not Found</h2>
-        <p className="text-xs text-slate-400">The developer @{username} does not exist or has been removed.</p>
-        <Link href="/developers" className="inline-block px-4 py-2 rounded-lg bg-Deloop-accent text-white text-xs font-semibold">
-          Back to Developers
+        <h2 className="text-2xl font-bold text-slate-100">Tərtibatçı Tapılmadı</h2>
+        <p className="text-xs text-slate-400">@{username} adlı istifadəçi mövcud deyil.</p>
+        <Link href="/developers" className="inline-block px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-semibold">
+          Tərtibatçılara Qayıt
         </Link>
       </div>
     );
@@ -76,211 +77,232 @@ export default function DeveloperProfilePage({ params }: { params: Promise<{ use
     );
 
     showToast(
-      newStatus ? `Following @${profile.username}` : `Unfollowed @${profile.username}`,
+      newStatus ? `@${profile.username} təqib edilir 👤` : `@${profile.username} təqibdən çıxarıldı`,
       undefined,
       "info"
     );
   };
 
-  const titleBadgeColor =
-    profile.developer_title === "Full-Stack Developer"
-      ? "bg-blue-950/80 text-blue-300 border-blue-700/60"
-      : profile.developer_title === "Frontend Developer"
-      ? "bg-cyan-950/80 text-cyan-300 border-cyan-700/60"
-      : profile.developer_title === "Backend Developer"
-      ? "bg-emerald-950/80 text-emerald-300 border-emerald-700/60"
-      : profile.developer_title === "AI / Data Engineer"
-      ? "bg-purple-950/80 text-purple-300 border-purple-700/60"
-      : "bg-slate-800 text-slate-300 border-slate-700";
+  const handleOpenDM = () => {
+    router.push(`/messages?user=${profile.id}`);
+  };
 
   return (
-    <div className="space-y-8 py-4">
+    <div className="max-w-4xl mx-auto space-y-8 pb-16">
       
-      {/* PROFILE HEADER CARD */}
-      <div className="bg-Deloop-card border border-Deloop-border rounded-2xl p-6 sm:p-8 space-y-6 shadow-xl">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+      {/* 1. INSTAGRAM PROFILE HEADER SECTION */}
+      <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6 shadow-2xl">
+        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 sm:gap-10">
           
-          <div className="flex items-center gap-5">
-            <img
-              src={profile.avatar_url || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300"}
-              alt={profile.full_name}
-              className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl object-cover ring-2 ring-Deloop-border shadow-md shrink-0"
-            />
-            <div className="space-y-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-100 tracking-tight">
-                  {profile.full_name}
-                </h1>
-                <span className={`px-2.5 py-1 rounded-md text-xs font-mono font-bold border ${titleBadgeColor}`}>
-                  <Code2 className="w-3.5 h-3.5 inline mr-1" />
-                  {profile.developer_title || "Full-Stack Developer"}
-                </span>
-              </div>
-              <p className="text-sm font-mono text-Deloop-accent">@{profile.username}</p>
-              
-              <div className="flex flex-wrap items-center gap-4 text-xs text-slate-400 pt-1">
-                {profile.location && (
-                  <span className="flex items-center gap-1">
-                    <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                    {profile.location}
-                  </span>
-                )}
-                <span className="flex items-center gap-1 font-mono text-[11px]">
-                  <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                  Joined {formatDate(profile.created_at)}
-                </span>
-              </div>
+          {/* PROFILE AVATAR WITH INSTAGRAM STORY GRADIENT RING */}
+          <div className="relative shrink-0">
+            <div className="p-1 rounded-full bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 shadow-xl">
+              <img
+                src={profile.avatar_url || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300"}
+                alt={profile.full_name}
+                className="w-28 h-28 sm:w-36 sm:h-36 rounded-full object-cover border-4 border-slate-950"
+              />
             </div>
           </div>
 
-          {/* ACTION BUTTONS */}
-          <div className="flex items-center gap-3 self-stretch sm:self-auto justify-end">
-            {isSelf ? (
-              <Link
-                href="/settings"
-                className="px-4 py-2.5 rounded-xl border border-Deloop-border hover:bg-slate-800 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition-colors"
-              >
-                <Edit3 className="w-4 h-4 text-slate-400" />
-                <span>Edit Profile</span>
-              </Link>
-            ) : (
-              <button
-                onClick={handleFollowToggle}
-                className={`px-5 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all ${
-                  isFollowing
-                    ? "bg-slate-800 text-slate-300 border border-slate-700 hover:bg-red-950/40 hover:text-red-400"
-                    : "bg-Deloop-accent hover:bg-Deloop-accentHover text-white shadow-md"
-                }`}
-              >
-                {isFollowing ? (
-                  <>
-                    <UserCheck className="w-4 h-4" />
-                    <span>Following</span>
-                  </>
+          {/* PROFILE DETAILS & ACTION BUTTONS */}
+          <div className="flex-1 text-center sm:text-left space-y-4">
+            
+            {/* USERNAME & BUTTONS ROW */}
+            <div className="flex flex-col sm:flex-row items-center gap-3">
+              <h1 className="text-xl sm:text-2xl font-bold text-slate-100 font-mono">
+                @{profile.username}
+              </h1>
+
+              <div className="flex items-center gap-2">
+                {isSelf ? (
+                  <Link
+                    href="/settings"
+                    className="px-4 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 flex items-center gap-1.5"
+                  >
+                    <Settings className="w-3.5 h-3.5" />
+                    <span>Profili Düzəlt</span>
+                  </Link>
                 ) : (
                   <>
-                    <UserPlus className="w-4 h-4" />
-                    <span>Follow Developer</span>
+                    <button
+                      onClick={handleFollowToggle}
+                      className={`px-5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-md ${
+                        isFollowing
+                          ? "bg-slate-800 text-slate-200 hover:bg-slate-700 border border-slate-700"
+                          : "bg-blue-600 hover:bg-blue-500 text-white"
+                      }`}
+                    >
+                      {isFollowing ? "Təqibdədir" : "Təqib Et"}
+                    </button>
+
+                    <button
+                      onClick={handleOpenDM}
+                      className="px-4 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-blue-400 text-xs font-bold border border-slate-700 flex items-center gap-1.5"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      <span>Direkt (DM)</span>
+                    </button>
                   </>
                 )}
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* BIO */}
-        <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-3xl">
-          {profile.bio || "Full-stack software developer passionate about code excellence and open-source."}
-        </p>
-
-        {/* SKILLS */}
-        {profile.skills && profile.skills.length > 0 && (
-          <div className="space-y-2 pt-2 border-t border-Deloop-border">
-            <span className="text-xs font-mono font-semibold text-slate-400 uppercase tracking-wider block">
-              Primary Technologies:
-            </span>
-            <div className="flex flex-wrap gap-2">
-              {profile.skills.map((skill) => (
-                <TechBadge key={skill} name={skill} size="md" />
-              ))}
+              </div>
             </div>
-          </div>
-        )}
 
-        {/* EXTERNAL LINKS & STATS */}
-        <div className="pt-4 border-t border-Deloop-border flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs">
-          <div className="flex flex-wrap items-center gap-4">
-            {profile.website && (
-              <a
-                href={profile.website}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center gap-1.5 text-slate-400 hover:text-Deloop-accent transition-colors font-mono"
-              >
-                <Globe className="w-4 h-4" />
-                <span>Website</span>
-              </a>
-            )}
-            {profile.github_username && (
-              <a
-                href={`https://github.com/${profile.github_username}`}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center gap-1.5 text-slate-400 hover:text-white transition-colors font-mono"
-              >
-                <Github className="w-4 h-4" />
-                <span>github.com/{profile.github_username}</span>
-              </a>
-            )}
-            {profile.linkedin_url && (
-              <a
-                href={profile.linkedin_url}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center gap-1.5 text-slate-400 hover:text-blue-400 transition-colors font-mono"
-              >
-                <Linkedin className="w-4 h-4" />
-                <span>LinkedIn</span>
-              </a>
-            )}
+            {/* STATS ROW (INSTAGRAM METRICS: POSTS, FOLLOWERS, FOLLOWING) */}
+            <div className="flex items-center justify-center sm:justify-start gap-8 border-y border-slate-800/80 py-3 text-xs sm:text-sm">
+              <div>
+                <span className="font-extrabold text-slate-100 mr-1">{projects.length}</span>
+                <span className="text-slate-400">Post</span>
+              </div>
+              <div>
+                <span className="font-extrabold text-slate-100 mr-1">{profile.followers_count || 0}</span>
+                <span className="text-slate-400">Təqibçi</span>
+              </div>
+              <div>
+                <span className="font-extrabold text-slate-100 mr-1">{profile.following_count || 0}</span>
+                <span className="text-slate-400">Təqib edir</span>
+              </div>
+            </div>
+
+            {/* BIO & LINKS */}
+            <div className="space-y-2 text-xs sm:text-sm">
+              <h2 className="font-bold text-slate-100">{profile.full_name}</h2>
+              <p className="text-blue-400 font-mono text-xs font-semibold">{profile.developer_title}</p>
+              {profile.bio && <p className="text-slate-300 leading-relaxed max-w-xl">{profile.bio}</p>}
+
+              {/* SOCIAL & WEBSITE LINKS */}
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 pt-2 text-xs text-slate-400">
+                {profile.location && (
+                  <span className="flex items-center gap-1">
+                    <MapPin className="w-3.5 h-3.5 text-slate-500" />
+                    <span>{profile.location}</span>
+                  </span>
+                )}
+                {profile.website && (
+                  <a
+                    href={profile.website}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-1 text-blue-400 hover:underline"
+                  >
+                    <Globe className="w-3.5 h-3.5" />
+                    <span>{profile.website.replace("https://", "")}</span>
+                  </a>
+                )}
+                {profile.github_username && (
+                  <a
+                    href={`https://github.com/${profile.github_username}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-1 text-slate-300 hover:text-white"
+                  >
+                    <Github className="w-3.5 h-3.5" />
+                    <span>github/{profile.github_username}</span>
+                  </a>
+                )}
+              </div>
+            </div>
+
           </div>
 
-          <div className="flex items-center gap-6 font-mono text-slate-300 font-medium">
-            <span className="flex items-center gap-1.5">
-              <FolderGit2 className="w-4 h-4 text-blue-400" />
-              <strong className="text-white text-sm">{projects.length}</strong> projects
-            </span>
-            <span className="flex items-center gap-1.5">
-              <Users className="w-4 h-4 text-purple-400" />
-              <strong className="text-white text-sm">{profile.followers_count || 0}</strong> followers
-            </span>
-          </div>
         </div>
       </div>
 
-      {/* TABS NAVIGATION */}
-      <div className="flex items-center gap-3 border-b border-Deloop-border pb-2 font-mono text-xs">
-        <button
-          onClick={() => setActiveTab("projects")}
-          className={`px-4 py-2 rounded-lg font-semibold flex items-center gap-2 transition-colors ${
-            activeTab === "projects"
-              ? "bg-Deloop-accent text-white"
-              : "text-slate-400 hover:text-slate-200 hover:bg-slate-900"
-          }`}
-        >
-          <FolderGit2 className="w-4 h-4" />
-          <span>Projects ({projects.length})</span>
-        </button>
+      {/* 2. INSTAGRAM PROFILE NAVIGATION TABS */}
+      <div className="flex items-center justify-center border-t border-slate-800">
+        <div className="flex items-center gap-12 text-xs font-bold uppercase tracking-wider">
+          <button
+            onClick={() => setActiveTab("grid")}
+            className={`py-4 flex items-center gap-2 border-t-2 transition-colors ${
+              activeTab === "grid"
+                ? "border-blue-500 text-blue-400"
+                : "border-transparent text-slate-500 hover:text-slate-300"
+            }`}
+          >
+            <Grid className="w-4 h-4" />
+            <span>POSTLAR (GRID)</span>
+          </button>
 
-        <button
-          onClick={() => setActiveTab("github")}
-          className={`px-4 py-2 rounded-lg font-semibold flex items-center gap-2 transition-colors ${
-            activeTab === "github"
-              ? "bg-Deloop-accent text-white"
-              : "text-slate-400 hover:text-slate-200 hover:bg-slate-900"
-          }`}
-        >
-          <Github className="w-4 h-4" />
-          <span>GitHub Insights</span>
-        </button>
+          <button
+            onClick={() => setActiveTab("feed")}
+            className={`py-4 flex items-center gap-2 border-t-2 transition-colors ${
+              activeTab === "feed"
+                ? "border-blue-500 text-blue-400"
+                : "border-transparent text-slate-500 hover:text-slate-300"
+            }`}
+          >
+            <Terminal className="w-4 h-4" />
+            <span>FEED GÖRÜNÜŞÜ</span>
+          </button>
+
+          {profile.github_username && (
+            <button
+              onClick={() => setActiveTab("github")}
+              className={`py-4 flex items-center gap-2 border-t-2 transition-colors ${
+                activeTab === "github"
+                  ? "border-blue-500 text-blue-400"
+                  : "border-transparent text-slate-500 hover:text-slate-300"
+              }`}
+            >
+              <Github className="w-4 h-4" />
+              <span>GITHUB REPOLARI</span>
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* TAB CONTENT */}
-      {activeTab === "projects" ? (
-        projects.length === 0 ? (
-          <div className="bg-Deloop-card border border-Deloop-border rounded-xl p-12 text-center text-slate-400 text-xs">
-            This developer has not published any project showcases yet.
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {projects.map((project) => (
-              <ProjectCard key={project.id} project={project} />
-            ))}
-          </div>
-        )
-      ) : (
-        <GitHubStatsCard githubUsername={profile.github_username || profile.username} />
+      {/* 3. TAB CONTENT */}
+      {activeTab === "grid" && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {projects.map((project) => (
+            <Link
+              key={project.id}
+              href={`/projects/${project.id}`}
+              className="relative aspect-square rounded-2xl overflow-hidden bg-slate-950 border border-slate-800 group"
+            >
+              {project.cover_image ? (
+                <img
+                  src={project.cover_image}
+                  alt={project.title}
+                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                />
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center p-4 bg-slate-900 text-slate-500 text-center">
+                  <Terminal className="w-8 h-8 mb-2 text-blue-500/60" />
+                  <span className="font-mono text-xs font-semibold text-slate-300">{project.title}</span>
+                </div>
+              )}
+
+              {/* INSTAGRAM HOVER OVERLAY WITH LIKES AND COMMENTS */}
+              <div className="absolute inset-0 bg-slate-950/75 backdrop-blur-xs opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-6 text-white font-bold text-sm">
+                <div className="flex items-center gap-1.5">
+                  <Heart className="w-5 h-5 fill-white text-white" />
+                  <span>{project.likes_count || 0}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <MessageCircle className="w-5 h-5 fill-white text-white" />
+                  <span>{project.comments_count || 0}</span>
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
       )}
+
+      {activeTab === "feed" && (
+        <div className="max-w-xl mx-auto space-y-6">
+          {projects.map((project) => (
+            <ProjectCard key={project.id} project={project} />
+          ))}
+        </div>
+      )}
+
+      {activeTab === "github" && profile.github_username && (
+        <div className="max-w-3xl mx-auto">
+          <GitHubStatsCard username={profile.github_username} />
+        </div>
+      )}
+
     </div>
   );
 }

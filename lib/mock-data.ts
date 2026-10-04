@@ -223,3 +223,33 @@ export const MOCK_STATS: PlatformStats = {
   total_likes: 420,
   new_users_this_month: 12,
 };
+
+export const MOCK_MESSAGES = [
+  {
+    id: "msg-1",
+    sender_id: "user-2",
+    receiver_id: "user-1",
+    content: "Salam Geray! Deloop layihəsinin dizaynı əla alınıb. Next.js 15 istifadə etmisiniz?",
+    is_read: true,
+    created_at: "2026-03-18T11:00:00Z",
+    sender: MOCK_PROFILES[1],
+  },
+  {
+    id: "msg-2",
+    sender_id: "user-1",
+    receiver_id: "user-2",
+    content: "Salam Aisha, çox sağ ol! Bəli, Next.js 15 və Supabase ilə işləyir.",
+    is_read: true,
+    created_at: "2026-03-18T11:05:00Z",
+    sender: MOCK_PROFILES[0],
+  },
+  {
+    id: "msg-3",
+    sender_id: "user-3",
+    receiver_id: "user-1",
+    content: "Xoş gördük! Backend tərəfdə FastAPI inteqrasiyası lazım gəlsə xəbər et.",
+    is_read: false,
+    created_at: "2026-03-18T14:20:00Z",
+    sender: MOCK_PROFILES[2],
+  }
+];
