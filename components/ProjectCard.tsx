@@ -3,16 +3,15 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { 
-  Heart, 
-  MessageCircle, 
-  Send, 
-  Bookmark, 
-  ExternalLink, 
-  Github, 
-  MoreHorizontal, 
+import {
+  Heart,
+  MessageCircle,
+  Send,
+  Bookmark,
+  ExternalLink,
+  Github,
+  MoreHorizontal,
   Terminal,
-  Share2
 } from "lucide-react";
 import { Project } from "@/types";
 import { localStore } from "@/lib/supabase/store";
@@ -39,32 +38,27 @@ export function ProjectCard({ project: initialProject }: ProjectCardProps) {
       e.preventDefault();
       e.stopPropagation();
     }
-
     const result = localStore.toggleLike(project.id);
     setHasLiked(result.liked);
     setLikesCount(result.count);
-
     if (result.liked) {
-      showToast("Bəyənildi ❤️", `"${project.title}" postunu bəyəndiniz`, "success");
+      showToast("❤️ Bəyənildi", `"${project.title}"`, "success");
     }
   };
 
   const handleDoubleClickMedia = () => {
-    if (!hasLiked) {
-      handleLikeToggle();
-    }
+    if (!hasLiked) handleLikeToggle();
     setShowHeartOverlay(true);
-    setTimeout(() => setShowHeartOverlay(false), 900);
+    setTimeout(() => setShowHeartOverlay(false), 850);
   };
 
   const handleAddQuickComment = (e: React.FormEvent) => {
     e.preventDefault();
     if (!commentText.trim()) return;
-
     localStore.addComment(project.id, commentText);
     setCommentsCount((prev) => prev + 1);
     setCommentText("");
-    showToast("Rəy əlavə edildi 💬", "Rəyiniz postun altına yazıldı.", "success");
+    showToast("💬 Rəy əlavə edildi", "", "success");
   };
 
   const handleDirectMessage = (e: React.MouseEvent) => {
@@ -80,100 +74,167 @@ export function ProjectCard({ project: initialProject }: ProjectCardProps) {
     e.stopPropagation();
     if (typeof window !== "undefined") {
       navigator.clipboard.writeText(`${window.location.origin}/projects/${project.id}`);
-      showToast("Link kopyalandı 🔗", "Postun linki kopyalandı.", "info");
+      showToast("🔗 Link kopyalandı", "", "info");
     }
   };
 
   return (
-    <article className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200">
-      
-      {/* 1. INSTAGRAM POST HEADER */}
-      <div className="p-3 sm:p-3.5 flex items-center justify-between border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-950/40">
+    <article
+      style={{
+        backgroundColor: "var(--bg-card)",
+        borderBottom: "1px solid var(--border-color)",
+      }}
+    >
+      {/* ── 1. POST HEADER ── */}
+      <div className="flex items-center justify-between px-3 py-2.5 sm:px-4">
         <div className="flex items-center gap-2.5">
           {project.profile && (
-            <Link href={`/developers/${project.profile.username}`} className="relative group">
-              <div className="p-[2px] rounded-full bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 group-hover:scale-105 transition-transform">
-                <img
-                  src={project.profile.avatar_url || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150"}
-                  alt={project.profile.full_name}
-                  className="w-9 h-9 rounded-full object-cover border-2 border-white dark:border-slate-950"
-                />
+            <Link href={`/developers/${project.profile.username}`} className="relative">
+              {/* Instagram gradient ring on avatar */}
+              <div
+                className="rounded-full flex items-center justify-center"
+                style={{
+                  width: "34px",
+                  height: "34px",
+                  background:
+                    "linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)",
+                  padding: "2px",
+                }}
+              >
+                <div
+                  style={{
+                    width: "30px",
+                    height: "30px",
+                    borderRadius: "50%",
+                    backgroundColor: "var(--bg-card)",
+                    padding: "1.5px",
+                  }}
+                >
+                  <img
+                    src={
+                      project.profile.avatar_url ||
+                      `https://ui-avatars.com/api/?name=${project.profile.full_name}&background=random&size=80`
+                    }
+                    alt={project.profile.full_name}
+                    className="w-full h-full rounded-full object-cover"
+                  />
+                </div>
               </div>
             </Link>
           )}
 
           <div>
             <div className="flex items-center gap-1.5">
-              <Link 
+              <Link
                 href={`/developers/${project.profile?.username || "dev"}`}
-                className="font-bold text-slate-900 dark:text-slate-100 hover:text-blue-600 dark:hover:text-blue-400 text-xs sm:text-sm transition-colors"
+                className="text-sm font-semibold"
+                style={{ color: "var(--text-main)", textDecoration: "none" }}
               >
-                {project.profile?.full_name || "Tərtibatçı"}
+                {project.profile?.username || "developer"}
               </Link>
-              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">@{project.profile?.username}</span>
+              {/* Blue verified-style category badge */}
+              <span
+                className="text-xs font-medium px-1.5 py-0.5 rounded-full"
+                style={{
+                  backgroundColor: "rgba(0,149,246,0.12)",
+                  color: "#0095f6",
+                  fontSize: "10px",
+                }}
+              >
+                {project.category}
+              </span>
             </div>
-            <div className="flex items-center gap-1.5 text-[10px] text-slate-500 dark:text-slate-400">
-              <span className="text-blue-600 dark:text-blue-400 font-semibold font-mono">{project.category}</span>
-              <span>•</span>
-              <span>{timeAgo(project.created_at)}</span>
-            </div>
+            <p style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+              {timeAgo(project.created_at)}
+            </p>
           </div>
         </div>
 
-        {/* TOP RIGHT DM & OPTIONS MENU */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5">
           {project.profile && (
             <button
               onClick={handleDirectMessage}
-              className="p-1.5 rounded-xl text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-              title="Şəxsi Mesaj (DM)"
+              className="p-1.5 rounded-full transition-all"
+              style={{ color: "var(--text-muted)" }}
+              title="Şəxsi Mesaj"
             >
               <Send className="w-4 h-4" />
             </button>
           )}
           <Link
             href={`/projects/${project.id}`}
-            className="p-1.5 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="p-1.5 rounded-full"
+            style={{ color: "var(--text-muted)" }}
           >
-            <MoreHorizontal className="w-4.5 h-4.5" />
+            <MoreHorizontal className="w-5 h-5" />
           </Link>
         </div>
       </div>
 
-      {/* 2. INSTAGRAM POST MEDIA (Double Click to Like) */}
-      <div 
+      {/* ── 2. POST IMAGE (Double-tap to like) ── */}
+      <div
         onDoubleClick={handleDoubleClickMedia}
-        className="relative w-full aspect-[16/10] bg-slate-950 overflow-hidden cursor-pointer select-none group"
+        className="relative w-full select-none cursor-pointer overflow-hidden"
+        style={{ aspectRatio: "1 / 1", backgroundColor: "#000" }}
       >
         {project.cover_image ? (
           <img
             src={project.cover_image}
             alt={project.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            className="w-full h-full object-cover"
+            style={{ display: "block" }}
           />
         ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-slate-900 via-slate-950 to-indigo-950 p-6 text-center text-slate-200">
-            <Terminal className="w-10 h-10 mb-2 text-blue-400 animate-pulse" />
-            <span className="font-mono text-xs font-bold text-slate-100">{project.title}</span>
-            <span className="text-[10px] text-slate-400 font-mono mt-0.5">{project.category} Codebase</span>
+          <div
+            className="w-full h-full flex flex-col items-center justify-center text-center p-6"
+            style={{
+              background: "linear-gradient(135deg, #0f0c29, #302b63, #24243e)",
+            }}
+          >
+            <Terminal className="w-12 h-12 mb-3" style={{ color: "#0095f6" }} />
+            <span className="font-bold text-base text-white">{project.title}</span>
+            <span style={{ color: "#a8a8a8", fontSize: "12px", marginTop: "4px" }}>
+              {project.category} Project
+            </span>
           </div>
         )}
 
-        {/* DOUBLE CLICK INSTAGRAM HEART OVERLAY */}
+        {/* Double-tap heart overlay */}
         {showHeartOverlay && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/30 backdrop-blur-xs animate-in fade-in zoom-in duration-200">
-            <Heart className="w-20 h-20 fill-red-500 text-red-500 animate-bounce drop-shadow-2xl" />
+          <div
+            className="absolute inset-0 flex items-center justify-center"
+            style={{ backgroundColor: "rgba(0,0,0,0.2)" }}
+          >
+            <Heart
+              className="like-overlay-heart"
+              style={{
+                width: "96px",
+                height: "96px",
+                fill: "white",
+                color: "white",
+                filter: "drop-shadow(0 4px 24px rgba(0,0,0,0.5))",
+              }}
+            />
           </div>
         )}
 
-        {/* STATUS OVERLAY */}
+        {/* Status badge */}
         <div className="absolute top-2.5 left-2.5">
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-slate-950/80 text-blue-400 border border-blue-500/30 backdrop-blur-md shadow-md">
+          <span
+            className="px-2 py-0.5 rounded-full text-xs font-semibold"
+            style={{
+              backgroundColor: "rgba(0,0,0,0.6)",
+              color: "#0095f6",
+              backdropFilter: "blur(8px)",
+              border: "1px solid rgba(0,149,246,0.3)",
+              fontSize: "10px",
+            }}
+          >
             {project.status}
           </span>
         </div>
 
-        {/* DEMO & GITHUB BUTTONS */}
+        {/* Demo & GitHub buttons */}
         <div className="absolute bottom-2.5 right-2.5 flex items-center gap-1.5">
           {project.live_demo_url && (
             <a
@@ -181,9 +242,10 @@ export function ProjectCard({ project: initialProject }: ProjectCardProps) {
               target="_blank"
               rel="noreferrer"
               onClick={(e) => e.stopPropagation()}
-              className="px-2.5 py-1 rounded-full bg-blue-600 hover:bg-blue-500 text-white font-semibold text-[11px] flex items-center gap-1 shadow-md transition-transform hover:scale-105"
+              className="flex items-center gap-1 text-white font-semibold rounded-full px-2.5 py-1 transition-all"
+              style={{ backgroundColor: "#0095f6", fontSize: "11px" }}
             >
-              <span>Canlı Demo</span>
+              <span>Demo</span>
               <ExternalLink className="w-3 h-3" />
             </a>
           )}
@@ -193,8 +255,12 @@ export function ProjectCard({ project: initialProject }: ProjectCardProps) {
               target="_blank"
               rel="noreferrer"
               onClick={(e) => e.stopPropagation()}
-              className="p-1.5 rounded-full bg-slate-950/80 hover:bg-slate-900 text-slate-200 backdrop-blur-md border border-slate-700 transition-transform hover:scale-105"
-              title="GitHub Repozitoriyası"
+              className="p-1.5 rounded-full text-white transition-all"
+              style={{
+                backgroundColor: "rgba(0,0,0,0.7)",
+                backdropFilter: "blur(8px)",
+                border: "1px solid rgba(255,255,255,0.2)",
+              }}
             >
               <Github className="w-3.5 h-3.5" />
             </a>
@@ -202,115 +268,150 @@ export function ProjectCard({ project: initialProject }: ProjectCardProps) {
         </div>
       </div>
 
-      {/* 3. INSTAGRAM ACTION BAR */}
-      <div className="p-3 sm:p-3.5 space-y-2.5">
+      {/* ── 3. ACTION BAR ── */}
+      <div className="px-3 sm:px-4 pt-3 pb-1 space-y-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3.5">
-            
-            {/* LIKE BUTTON */}
+            {/* Like */}
             <button
               onClick={handleLikeToggle}
-              className="group text-slate-700 dark:text-slate-300 hover:text-red-500 transition-colors focus:outline-none"
+              className="transition-transform active:scale-90"
+              style={{ lineHeight: 0 }}
             >
-              <Heart 
-                className={`w-5.5 h-5.5 transition-transform group-hover:scale-110 ${
-                  hasLiked ? "fill-red-500 text-red-500" : ""
-                }`} 
+              <Heart
+                className="w-6 h-6 transition-all"
+                style={{
+                  fill: hasLiked ? "#ed4956" : "none",
+                  color: hasLiked ? "#ed4956" : "var(--text-main)",
+                  strokeWidth: hasLiked ? 0 : 1.5,
+                }}
               />
             </button>
 
-            {/* COMMENT BUTTON */}
+            {/* Comment */}
             <Link
               href={`/projects/${project.id}#comments`}
-              className="text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              style={{ lineHeight: 0 }}
             >
-              <MessageCircle className="w-5.5 h-5.5 hover:scale-110 transition-transform" />
+              <MessageCircle
+                className="w-6 h-6"
+                style={{ color: "var(--text-main)", strokeWidth: 1.5 }}
+              />
             </Link>
 
-            {/* SHARE LINK */}
+            {/* Share */}
             <button
               onClick={handleCopyShare}
-              className="text-slate-700 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
-              title="Linki Kopyala"
+              className="transition-transform active:scale-90"
+              style={{ lineHeight: 0 }}
             >
-              <Share2 className="w-5 h-5 hover:scale-110 transition-transform" />
+              <Send
+                className="w-6 h-6"
+                style={{ color: "var(--text-main)", strokeWidth: 1.5 }}
+              />
             </button>
           </div>
 
-          {/* BOOKMARK BUTTON */}
+          {/* Bookmark */}
           <button
             onClick={() => {
               setIsSaved(!isSaved);
-              showToast(
-                !isSaved ? "Yadda saxlanıldı 🔖" : "Silindi",
-                !isSaved ? "Post kolleksiyanıza əlavə olundu." : undefined,
-                "info"
-              );
+              showToast(!isSaved ? "🔖 Yadda saxlanıldı" : "Silindi", "", "info");
             }}
-            className="text-slate-700 dark:text-slate-300 hover:text-amber-500 transition-colors"
+            style={{ lineHeight: 0 }}
           >
-            <Bookmark className={`w-5.5 h-5.5 ${isSaved ? "fill-amber-500 text-amber-500" : ""}`} />
+            <Bookmark
+              className="w-6 h-6 transition-all"
+              style={{
+                fill: isSaved ? "var(--text-main)" : "none",
+                color: "var(--text-main)",
+                strokeWidth: isSaved ? 0 : 1.5,
+              }}
+            />
           </button>
         </div>
 
-        {/* LIKES COUNTER */}
-        <div className="text-xs font-bold text-slate-900 dark:text-slate-100">
-          <span>{likesCount} bəyənmə</span>
+        {/* LIKES COUNT */}
+        <p className="text-sm font-semibold" style={{ color: "var(--text-main)" }}>
+          {likesCount.toLocaleString()} bəyənmə
+        </p>
+
+        {/* CAPTION */}
+        <div style={{ fontSize: "14px", color: "var(--text-main)", lineHeight: "1.5" }}>
+          <Link
+            href={`/developers/${project.profile?.username}`}
+            className="font-semibold mr-1.5"
+            style={{ color: "var(--text-main)", textDecoration: "none" }}
+          >
+            {project.profile?.username}
+          </Link>
+          <span style={{ fontWeight: "600", color: "#0095f6" }}>[{project.title}]</span>{" "}
+          <span style={{ color: "var(--text-muted)", fontSize: "13px" }}>{project.description}</span>
         </div>
 
-        {/* CAPTION & HASHTAGS */}
-        <div className="space-y-1 text-xs sm:text-sm">
-          <p className="text-slate-800 dark:text-slate-300 leading-relaxed">
-            <Link 
-              href={`/developers/${project.profile?.username}`}
-              className="font-bold text-slate-900 dark:text-slate-100 mr-2 hover:underline"
+        {/* HASHTAGS */}
+        <div className="flex flex-wrap gap-1">
+          {project.technologies.map((tech) => (
+            <span
+              key={tech}
+              style={{ color: "#0095f6", fontSize: "13px", cursor: "pointer" }}
             >
-              {project.profile?.full_name}
-            </Link>
-            <span className="font-semibold text-blue-600 dark:text-blue-400 mr-1.5">[{project.title}]</span>
-            {project.description}
-          </p>
-
-          {/* HASHTAGS */}
-          <div className="flex flex-wrap gap-1.5 pt-0.5">
-            {project.technologies.map((tech) => (
-              <span key={tech} className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer font-mono text-[11px]">
-                #{tech.toLowerCase().replace(/\s+/g, "")}
-              </span>
-            ))}
-          </div>
+              #{tech.toLowerCase().replace(/\s+/g, "")}
+            </span>
+          ))}
         </div>
 
-        {/* COMMENTS LINK */}
+        {/* VIEW COMMENTS LINK */}
         {commentsCount > 0 && (
           <Link
             href={`/projects/${project.id}#comments`}
-            className="block text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 font-medium"
+            className="block"
+            style={{ color: "var(--text-muted)", fontSize: "13px", textDecoration: "none" }}
           >
-            Bütün {commentsCount} rəyə baxın...
+            Bütün {commentsCount} rəyə baxın
           </Link>
         )}
 
-        {/* INLINE QUICK COMMENT */}
-        <form onSubmit={handleAddQuickComment} className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center gap-2">
-          <input
-            type="text"
-            placeholder="Rəy yazın..."
-            value={commentText}
-            onChange={(e) => setCommentText(e.target.value)}
-            className="flex-1 bg-transparent text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none"
-          />
+        {/* TIME */}
+        <p style={{ fontSize: "10px", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+          {timeAgo(project.created_at)}
+        </p>
+      </div>
+
+      {/* ── 4. COMMENT INPUT ── */}
+      <form
+        onSubmit={handleAddQuickComment}
+        className="flex items-center gap-3 px-3 sm:px-4 py-2.5"
+        style={{ borderTop: "1px solid var(--border-color)" }}
+      >
+        {/* Current user avatar */}
+        <img
+          src={
+            localStore.getCurrentUser()?.avatar_url ||
+            `https://ui-avatars.com/api/?name=U&background=random&size=60`
+          }
+          alt="siz"
+          className="rounded-full object-cover shrink-0"
+          style={{ width: "28px", height: "28px" }}
+        />
+        <input
+          type="text"
+          placeholder="Rəy əlavə edin..."
+          value={commentText}
+          onChange={(e) => setCommentText(e.target.value)}
+          className="flex-1 bg-transparent outline-none text-sm"
+          style={{ color: "var(--text-main)" }}
+        />
+        {commentText.trim() && (
           <button
             type="submit"
-            disabled={!commentText.trim()}
-            className="text-xs font-bold text-blue-600 dark:text-blue-400 disabled:opacity-40 transition-colors"
+            className="text-sm font-semibold transition-opacity"
+            style={{ color: "#0095f6" }}
           >
             Paylaş
           </button>
-        </form>
-
-      </div>
-
+        )}
+      </form>
     </article>
   );
 }

@@ -2,18 +2,14 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { Search, Plus, Sparkles, Flame } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { localStore } from "@/lib/supabase/store";
 import { ProjectCard } from "@/components/ProjectCard";
 import { DeveloperStories } from "@/components/DeveloperStories";
 import { Profile } from "@/types";
 import { useToast } from "@/components/Toast";
 
-const CATEGORIES = ["Barchasi", "Full Stack", "Frontend", "Backend", "AI", "Mobile", "DevOps"];
-
 export default function ProjectsFeedPage() {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("Barchasi");
   const [currentUser, setCurrentUser] = useState<Profile | null>(null);
   const [suggestedProfiles, setSuggestedProfiles] = useState<Profile[]>([]);
   const { showToast } = useToast();
@@ -25,10 +21,7 @@ export default function ProjectsFeedPage() {
     setSuggestedProfiles(profiles.slice(0, 5));
   }, []);
 
-  const projects = localStore.getProjects(
-    selectedCategory === "Barchasi" ? "All" : selectedCategory, 
-    searchQuery
-  );
+  const projects = localStore.getProjects();
 
   const handleFollowToggle = (profile: Profile) => {
     const isNowFollowing = localStore.toggleFollow(profile.id);
@@ -36,79 +29,49 @@ export default function ProjectsFeedPage() {
       prev.map((p) => (p.id === profile.id ? { ...p, is_following: isNowFollowing } : p))
     );
     showToast(
-      isNowFollowing ? "Təqib edildi 👤" : "Təqibdən çıxarıldı",
-      isNowFollowing ? `${profile.full_name} təqibçilərinizə əlavə olundu.` : undefined,
+      isNowFollowing ? "Təqib edildi" : "Təqibdən çıxarıldı",
+      isNowFollowing ? `${profile.full_name} siyahınıza əlavə olundu` : undefined,
       "info"
     );
   };
 
   return (
-    <div className="max-w-5xl mx-auto space-y-4 sm:space-y-5 pb-16">
-      
-      {/* 1. COMPACT TOP INSTAGRAM STORIES BAR */}
-      <DeveloperStories />
+    /* Instagram uses a centered 2-column layout on desktop:
+       left = feed (max-w-[470px]), right = sidebar */
+    <div className="flex justify-center gap-8 px-0 sm:px-4" style={{ paddingTop: "8px" }}>
 
-      {/* 2. CATEGORY & SEARCH BAR */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3 sm:p-3.5 space-y-2.5 shadow-sm">
-        <div className="flex items-center gap-2.5">
-          <div className="relative flex-1">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Postlarda və ya texnologiyalarda axtarın (#react, #python)..."
-              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl pl-9 pr-3 py-1.5 text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-blue-600 dark:focus:border-blue-500 transition-colors"
-            />
-          </div>
+      {/* ─────────── LEFT: FEED ─────────── */}
+      <div className="w-full" style={{ maxWidth: "470px" }}>
 
-          <Link
-            href="/projects/new"
-            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-semibold text-xs flex items-center gap-1 shadow-sm shrink-0 transition-transform active:scale-95"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Yeni Post</span>
-          </Link>
-        </div>
+        {/* STORIES */}
+        <DeveloperStories />
 
-        {/* CATEGORY TAGS */}
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-          {CATEGORIES.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
-              className={`px-2.5 py-1 rounded-xl text-xs font-mono font-medium transition-colors shrink-0 ${
-                selectedCategory === cat
-                  ? "bg-blue-600 text-white font-bold shadow-sm"
-                  : "bg-slate-100 dark:bg-slate-950 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:text-slate-900 dark:hover:text-slate-200"
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* 3. MAIN INSTAGRAM FEED & RIGHT SIDEBAR GRID */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-        
-        {/* CENTER POSTS FEED */}
-        <div className="lg:col-span-8 space-y-5">
+        {/* POSTS */}
+        <div>
           {projects.length === 0 ? (
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 text-center space-y-2">
-              <Flame className="w-8 h-8 mx-auto text-blue-500/60 animate-bounce" />
-              <h3 className="font-bold text-slate-900 dark:text-slate-200 text-xs sm:text-sm">Hələ ki, post tapılmadı</h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto">
-                İlk post paylaşan siz olun və layihənizi icma ilə bölüşün!
-              </p>
-              <div className="pt-2">
-                <Link
-                  href="/projects/new"
-                  className="inline-block px-3.5 py-1.5 rounded-xl bg-blue-600 text-white text-xs font-semibold shadow-sm"
-                >
-                  Post Paylaş
-                </Link>
+            <div
+              className="flex flex-col items-center justify-center py-16 text-center"
+              style={{ color: "var(--text-muted)" }}
+            >
+              <div
+                className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
+                style={{ border: "2px solid var(--border-color)" }}
+              >
+                <Sparkles className="w-7 h-7" />
               </div>
+              <h3 className="font-semibold text-base mb-1" style={{ color: "var(--text-main)" }}>
+                Hələ post yoxdur
+              </h3>
+              <p className="text-sm mb-4">
+                İlk post paylaşan siz olun!
+              </p>
+              <Link
+                href="/projects/new"
+                className="px-4 py-1.5 rounded-lg text-sm font-semibold text-white"
+                style={{ backgroundColor: "#0095f6" }}
+              >
+                Post Paylaş
+              </Link>
             </div>
           ) : (
             projects.map((project) => (
@@ -116,91 +79,127 @@ export default function ProjectsFeedPage() {
             ))
           )}
         </div>
+      </div>
 
-        {/* RIGHT SIDEBAR - INSTAGRAM SUGGESTIONS */}
-        <div className="hidden lg:block lg:col-span-4 space-y-4 sticky top-20">
-          
-          {/* LOGGED IN USER PROFILE SUMMARY */}
+      {/* ─────────── RIGHT: SIDEBAR (Desktop only) ─────────── */}
+      <div className="hidden lg:block" style={{ width: "293px", flexShrink: 0 }}>
+        <div className="sticky" style={{ top: "80px" }}>
+
+          {/* CURRENT USER */}
           {currentUser && (
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 flex items-center justify-between shadow-sm">
-              <Link href={`/developers/${currentUser.username}`} className="flex items-center gap-2.5">
+            <div className="flex items-center justify-between mb-5">
+              <Link
+                href={`/developers/${currentUser.username}`}
+                className="flex items-center gap-3"
+                style={{ textDecoration: "none" }}
+              >
                 <img
-                  src={currentUser.avatar_url || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150"}
+                  src={
+                    currentUser.avatar_url ||
+                    `https://ui-avatars.com/api/?name=${currentUser.full_name}&background=random&size=120`
+                  }
                   alt={currentUser.full_name}
-                  className="w-10 h-10 rounded-full object-cover border border-slate-200 dark:border-slate-700"
+                  className="rounded-full object-cover"
+                  style={{ width: "44px", height: "44px", border: "1px solid var(--border-color)" }}
                 />
                 <div>
-                  <h4 className="font-bold text-slate-900 dark:text-slate-100 text-xs hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                  <p className="text-sm font-semibold" style={{ color: "var(--text-main)" }}>
+                    {currentUser.username}
+                  </p>
+                  <p className="text-xs" style={{ color: "var(--text-muted)" }}>
                     {currentUser.full_name}
-                  </h4>
-                  <p className="text-[11px] text-slate-500 font-mono">@{currentUser.username}</p>
+                  </p>
                 </div>
               </Link>
               <Link
                 href={`/developers/${currentUser.username}`}
-                className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline"
+                className="text-xs font-semibold"
+                style={{ color: "#0095f6", textDecoration: "none" }}
               >
                 Profil
               </Link>
             </div>
           )}
 
-          {/* SUGGESTED DEVELOPERS TO FOLLOW */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 space-y-3 shadow-sm">
-            <div className="flex items-center justify-between">
-              <h3 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
-                <Sparkles className="w-3 h-3 text-amber-500" />
-                <span>Sizin üçün təkliflər</span>
-              </h3>
-              <Link href="/developers" className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline">
-                Hamısı
-              </Link>
-            </div>
+          {/* SUGGESTIONS HEADER */}
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm font-semibold" style={{ color: "var(--text-muted)" }}>
+              Sizin üçün təkliflər
+            </span>
+            <Link
+              href="/developers"
+              className="text-xs font-semibold"
+              style={{ color: "var(--text-main)", textDecoration: "none" }}
+            >
+              Hamısı
+            </Link>
+          </div>
 
-            <div className="space-y-2.5">
-              {suggestedProfiles.map((p) => (
-                <div key={p.id} className="flex items-center justify-between gap-2">
-                  <Link href={`/developers/${p.username}`} className="flex items-center gap-2 min-w-0">
-                    <img
-                      src={p.avatar_url || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150"}
-                      alt={p.full_name}
-                      className="w-8 h-8 rounded-full object-cover border border-slate-200 dark:border-slate-800 shrink-0"
-                    />
-                    <div className="min-w-0">
-                      <h5 className="text-xs font-semibold text-slate-900 dark:text-slate-200 truncate hover:text-blue-600">
-                        {p.full_name}
-                      </h5>
-                      <p className="text-[10px] text-slate-500 font-mono truncate">@{p.username}</p>
-                    </div>
-                  </Link>
-
-                  <button
-                    onClick={() => handleFollowToggle(p)}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all shrink-0 ${
-                      p.is_following
-                        ? "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
-                        : "bg-blue-600 hover:bg-blue-500 text-white"
-                    }`}
-                  >
-                    {p.is_following ? "Təqibdədir" : "Təqib et"}
-                  </button>
-                </div>
-              ))}
-            </div>
+          {/* SUGGESTED ACCOUNTS */}
+          <div className="space-y-3">
+            {suggestedProfiles.map((p) => (
+              <div key={p.id} className="flex items-center justify-between">
+                <Link
+                  href={`/developers/${p.username}`}
+                  className="flex items-center gap-2.5 min-w-0"
+                  style={{ textDecoration: "none" }}
+                >
+                  <img
+                    src={
+                      p.avatar_url ||
+                      `https://ui-avatars.com/api/?name=${p.full_name}&background=random&size=80`
+                    }
+                    alt={p.full_name}
+                    className="rounded-full object-cover shrink-0"
+                    style={{ width: "32px", height: "32px", border: "1px solid var(--border-color)" }}
+                  />
+                  <div className="min-w-0">
+                    <p
+                      className="text-sm font-semibold truncate"
+                      style={{ color: "var(--text-main)" }}
+                    >
+                      {p.username}
+                    </p>
+                    <p
+                      className="text-xs truncate"
+                      style={{ color: "var(--text-muted)" }}
+                    >
+                      {p.developer_title || "Developer"}
+                    </p>
+                  </div>
+                </Link>
+                <button
+                  onClick={() => handleFollowToggle(p)}
+                  className="text-xs font-semibold shrink-0 ml-2 transition-all"
+                  style={{
+                    color: p.is_following ? "var(--text-muted)" : "#0095f6",
+                    textDecoration: "none",
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: "0",
+                  }}
+                >
+                  {p.is_following ? "Təqibdə" : "Təqib et"}
+                </button>
+              </div>
+            ))}
           </div>
 
           {/* FOOTER LINKS */}
-          <div className="px-2 text-[10px] text-slate-500 dark:text-slate-500 space-y-1 font-mono">
-            <div className="flex flex-wrap gap-x-2 gap-y-1">
-              <span>Haqqımızda</span> • <span>Dəstək</span> • <span>Məxfilik</span> • <span>Şərtlər</span>
+          <div className="mt-5 space-y-1" style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+            <div className="flex flex-wrap gap-x-1.5 gap-y-1">
+              {["Haqqımızda", "Dəstək", "Məxfilik", "Şərtlər", "Cookies"].map((link, i) => (
+                <React.Fragment key={link}>
+                  <span className="hover:underline cursor-pointer">{link}</span>
+                  {i < 4 && <span>·</span>}
+                </React.Fragment>
+              ))}
             </div>
-            <p>© 2026 Deloop Gram • Native Mobile App</p>
+            <p>© 2026 DELOOP GRAM</p>
           </div>
-
         </div>
-
       </div>
-
     </div>
   );
 }

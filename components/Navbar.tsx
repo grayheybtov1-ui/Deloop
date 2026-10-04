@@ -3,18 +3,15 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { 
-  Home, 
-  Search, 
-  PlusSquare, 
-  MessageCircle, 
+import {
+  Home,
+  Search,
+  PlusSquare,
   Heart,
-  Bell, 
-  User as UserIcon, 
-  LogOut, 
-  Terminal,
-  Compass,
-  Send
+  User as UserIcon,
+  LogOut,
+  Send,
+  Film,
 } from "lucide-react";
 import { localStore } from "@/lib/supabase/store";
 import { Profile } from "@/types";
@@ -23,144 +20,244 @@ export function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const [user, setUser] = useState<Profile | null>(null);
-  const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [unread, setUnread] = useState(0);
 
   useEffect(() => {
     const curr = localStore.getCurrentUser();
     setUser(curr);
     const notifs = localStore.getNotifications();
-    setUnreadNotifications(notifs.filter((n) => !n.is_read).length);
+    setUnread(notifs.filter((n) => !n.is_read).length);
   }, [pathname]);
 
   const handleLogout = () => {
     localStore.logout();
     setUser(null);
-    router.push("/");
+    router.push("/login");
   };
 
-  const navLinks = [
-    { href: "/projects", label: "Feed", icon: Home },
-    { href: "/developers", label: "Kəşf Et", icon: Search },
-    { href: "/projects/new", label: "Post Paylaş", icon: PlusSquare },
-    { href: "/notifications", label: "Bildirişlər", icon: Heart, badge: unreadNotifications },
+  // Instagram bottom nav items (mobile)
+  const mobileNavItems = [
+    { href: "/projects", icon: Home, label: "Ana Səhifə" },
+    { href: "/developers", icon: Search, label: "Kəşf Et" },
+    { href: "/projects/new", icon: PlusSquare, label: "Yeni Post" },
+    { href: "/notifications", icon: Heart, label: "Bildirişlər", badge: unread },
+    {
+      href: user ? `/developers/${user.username}` : "/login",
+      icon: UserIcon,
+      label: "Profil",
+      isAvatar: true,
+    },
   ];
-
-  if (user) {
-    navLinks.push({ href: `/developers/${user.username}`, label: "Profil", icon: UserIcon });
-  }
 
   return (
     <>
-      {/* 1. TOP HEADER (INSTAGRAM APP TOP BAR) */}
-      <header className="sticky top-0 z-40 w-full border-b border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-950/90 backdrop-blur-xl transition-colors">
-        <div className="max-w-5xl mx-auto px-4 h-14 sm:h-16 flex items-center justify-between">
-          
+      {/* ==========================================
+          TOP HEADER — Instagram Web Style
+          ========================================== */}
+      <header
+        className="fixed top-0 left-0 right-0 z-50"
+        style={{
+          backgroundColor: "var(--nav-bg)",
+          borderBottom: "1px solid var(--nav-border)",
+          height: "60px",
+        }}
+      >
+        <div
+          className="h-full flex items-center justify-between px-4"
+          style={{ maxWidth: "935px", margin: "0 auto" }}
+        >
           {/* LOGO */}
-          <Link href="/projects" className="flex items-center gap-2 group">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 flex items-center justify-center text-white shadow-md group-hover:scale-105 transition-transform">
-              <Terminal className="w-4 h-4" />
+          <Link
+            href="/projects"
+            className="flex items-center gap-2 no-underline"
+            style={{ textDecoration: "none" }}
+          >
+            <div
+              className="flex items-center justify-center w-8 h-8 rounded-xl text-white text-sm font-black"
+              style={{
+                background: "linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)",
+              }}
+            >
+              D
             </div>
-            <span className="font-black text-xl tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 dark:from-blue-400 dark:via-indigo-300 dark:to-purple-400 font-sans">
+            <span
+              className="font-black text-lg tracking-tight hidden sm:block"
+              style={{
+                background: "linear-gradient(135deg, #f09433, #dc2743, #bc1888)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
+              }}
+            >
               Deloop Gram
             </span>
           </Link>
 
-          {/* DESKTOP NAV LINKS */}
+          {/* DESKTOP CENTER — Search (Instagram style) */}
+          <div className="hidden md:flex flex-1 max-w-xs mx-6">
+            <div
+              className="relative w-full"
+            >
+              <Search
+                className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4"
+                style={{ color: "var(--text-muted)" }}
+              />
+              <input
+                type="text"
+                placeholder="Axtar"
+                className="w-full py-2 pl-10 pr-4 rounded-lg text-sm outline-none border-0"
+                style={{
+                  backgroundColor: "var(--bg-subtle)",
+                  color: "var(--text-main)",
+                }}
+                onFocus={(e) => {
+                  (e.target as HTMLInputElement).style.backgroundColor = "var(--bg-subtle)";
+                }}
+              />
+            </div>
+          </div>
+
+          {/* DESKTOP RIGHT — Nav Icons */}
           <nav className="hidden md:flex items-center gap-1">
-            {navLinks.map((link) => {
-              const Icon = link.icon;
-              const isActive = pathname === link.href || (link.href !== "/projects" && pathname.startsWith(link.href));
+            {[
+              { href: "/projects", icon: Home, label: "Ana Səhifə" },
+              { href: "/projects/new", icon: PlusSquare, label: "Yeni Post" },
+              { href: "/notifications", icon: Heart, label: "Bildirişlər", badge: unread },
+              { href: "/messages", icon: Send, label: "Mesajlar" },
+            ].map(({ href, icon: Icon, label, badge }) => {
+              const isActive = pathname === href || (href !== "/projects" && pathname.startsWith(href));
               return (
                 <Link
-                  key={link.href}
-                  href={link.href}
-                  className={`relative flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all ${
-                    isActive
-                      ? "bg-blue-50 dark:bg-blue-600/15 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-500/30"
-                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-900"
-                  }`}
+                  key={href}
+                  href={href}
+                  title={label}
+                  className="relative p-2.5 rounded-lg transition-all"
+                  style={{
+                    color: isActive ? "var(--text-main)" : "var(--text-muted)",
+                  }}
                 >
-                  <Icon className={`w-4.5 h-4.5 ${isActive ? "text-blue-600 dark:text-blue-400" : ""}`} />
-                  <span>{link.label}</span>
-
-                  {link.badge && link.badge > 0 ? (
-                    <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center animate-pulse">
-                      {link.badge}
+                  <Icon
+                    className="w-6 h-6"
+                    fill={isActive ? "var(--text-main)" : "none"}
+                    strokeWidth={isActive ? 2.5 : 1.5}
+                  />
+                  {badge && badge > 0 ? (
+                    <span
+                      className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full text-white text-[10px] font-bold flex items-center justify-center"
+                      style={{ backgroundColor: "#ed4956" }}
+                    >
+                      {badge}
                     </span>
                   ) : null}
                 </Link>
               );
             })}
-          </nav>
 
-          {/* RIGHT SIDE ICONS (DM & USER) */}
-          <div className="flex items-center gap-2">
-            {/* DIRECT MESSAGE (DM) ICON */}
-            <Link
-              href="/messages"
-              className="p-2 text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-900 rounded-xl transition-colors relative"
-              title="Direkt Mesajlar (DM)"
-            >
-              <Send className="w-5 h-5" />
-            </Link>
-
+            {/* USER AVATAR or LOGIN */}
             {user ? (
-              <div className="flex items-center gap-2">
-                <Link
-                  href={`/developers/${user.username}`}
-                  className="p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors"
-                >
+              <div className="flex items-center gap-1 ml-1">
+                <Link href={`/developers/${user.username}`} className="p-1">
                   <img
-                    src={user.avatar_url || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150"}
+                    src={user.avatar_url || `https://ui-avatars.com/api/?name=${user.full_name}&background=random&size=80`}
                     alt={user.full_name}
-                    className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover border border-slate-300 dark:border-slate-700"
+                    className="w-7 h-7 rounded-full object-cover"
+                    style={{
+                      border: pathname.includes(user.username) ? "2px solid var(--text-main)" : "1px solid var(--border-color)",
+                    }}
                   />
                 </Link>
                 <button
                   onClick={handleLogout}
-                  className="p-1.5 text-slate-500 hover:text-red-500 hover:bg-slate-100 dark:hover:bg-slate-900 rounded-xl transition-colors hidden sm:block"
-                  title="Çıxış Et"
+                  className="p-2 rounded-lg transition-all hidden lg:block"
+                  style={{ color: "var(--text-muted)" }}
+                  title="Çıxış"
                 >
-                  <LogOut className="w-4 h-4" />
+                  <LogOut className="w-5 h-5" />
                 </button>
               </div>
             ) : (
               <Link
                 href="/login"
-                className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs rounded-xl transition-all shadow-sm"
+                className="ml-2 px-4 py-1.5 rounded-lg text-sm font-semibold text-white transition-all"
+                style={{ backgroundColor: "var(--color-accent)" }}
               >
                 Daxil Ol
               </Link>
             )}
-          </div>
+          </nav>
 
+          {/* MOBILE RIGHT — DM icon + Avatar */}
+          <div className="flex md:hidden items-center gap-2">
+            <Link href="/messages" className="p-1.5" style={{ color: "var(--text-main)" }}>
+              <Send className="w-6 h-6" />
+            </Link>
+            {user && (
+              <Link href={`/developers/${user.username}`} className="p-1">
+                <img
+                  src={user.avatar_url || `https://ui-avatars.com/api/?name=${user.full_name}&background=random&size=80`}
+                  alt={user.full_name}
+                  className="w-7 h-7 rounded-full object-cover"
+                  style={{ border: "1px solid var(--border-color)" }}
+                />
+              </Link>
+            )}
+          </div>
         </div>
       </header>
 
-      {/* 2. MOBILE BOTTOM FIXED APP BAR (INSTAGRAM NATIVE APP BAR) */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-slate-950/95 border-t border-slate-200 dark:border-slate-800 backdrop-blur-xl px-2 py-2.5 flex items-center justify-around shadow-2xl transition-colors">
-        {navLinks.map((link) => {
-          const Icon = link.icon;
-          const isActive = pathname === link.href;
-          return (
-            <Link
-              key={link.href}
-              href={link.href}
-              className={`relative p-2 rounded-xl transition-transform active:scale-90 ${
-                isActive 
-                  ? "text-blue-600 dark:text-blue-400 font-bold" 
-                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
-              }`}
-            >
-              <Icon className="w-6 h-6" />
-              {link.badge && link.badge > 0 ? (
-                <span className="absolute top-1 right-1 w-3.5 h-3.5 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center">
-                  {link.badge}
-                </span>
-              ) : null}
-            </Link>
-          );
-        })}
+      {/* ==========================================
+          BOTTOM NAV — Instagram Mobile App Style
+          ========================================== */}
+      <nav
+        className="md:hidden fixed bottom-0 left-0 right-0 z-50"
+        style={{
+          backgroundColor: "var(--nav-bg)",
+          borderTop: "1px solid var(--nav-border)",
+          height: "49px",
+          paddingBottom: "env(safe-area-inset-bottom, 0px)",
+        }}
+      >
+        <div className="h-full flex items-center justify-around px-2">
+          {mobileNavItems.map(({ href, icon: Icon, label, badge, isAvatar }) => {
+            const isActive =
+              pathname === href ||
+              (href !== "/projects" && href.length > 1 && pathname.startsWith(href));
+            return (
+              <Link
+                key={href}
+                href={href}
+                title={label}
+                className="relative flex items-center justify-center w-12 h-full"
+                style={{ color: isActive ? "var(--text-main)" : "var(--text-muted)" }}
+              >
+                {isAvatar && user ? (
+                  <img
+                    src={user.avatar_url || `https://ui-avatars.com/api/?name=${user.full_name}&background=random&size=80`}
+                    alt={label}
+                    className="w-[26px] h-[26px] rounded-full object-cover"
+                    style={{
+                      border: isActive ? "2px solid var(--text-main)" : "1px solid var(--border-color)",
+                    }}
+                  />
+                ) : (
+                  <Icon
+                    className="w-[26px] h-[26px]"
+                    fill={isActive ? "var(--text-main)" : "none"}
+                    strokeWidth={isActive ? 2.5 : 1.5}
+                  />
+                )}
+                {badge && badge > 0 ? (
+                  <span
+                    className="absolute top-2 right-1 w-4 h-4 rounded-full text-white text-[9px] font-bold flex items-center justify-center"
+                    style={{ backgroundColor: "#ed4956" }}
+                  >
+                    {badge > 9 ? "9+" : badge}
+                  </span>
+                ) : null}
+              </Link>
+            );
+          })}
+        </div>
       </nav>
     </>
   );

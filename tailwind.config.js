@@ -9,29 +9,27 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        Deloop: {
+        ig: {
           bg: "var(--bg-main)",
           card: "var(--bg-card)",
+          subtle: "var(--bg-subtle)",
           border: "var(--border-color)",
-          borderHover: "var(--border-hover)",
+          "border-hover": "var(--border-hover)",
+          text: "var(--text-main)",
           muted: "var(--text-muted)",
           accent: "var(--color-accent)",
-          accentHover: "#1d4ed8",
+          "accent-hover": "var(--color-accent-hover)",
+          "nav-bg": "var(--nav-bg)",
+          "nav-border": "var(--nav-border)",
         },
-        devhub: {
-          bg: "#0b0f19",
-          card: "#111827",
-          border: "#1f2937",
-          borderHover: "#374151",
-          muted: "#9ca3af",
-          accent: "#3b82f6",
-          accentHover: "#2563eb",
-        }
       },
       fontFamily: {
-        sans: ["Inter", "system-ui", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "sans-serif"],
-        mono: ["JetBrains Mono", "Fira Code", "Consolas", "monospace"],
-      }
+        sans: ["Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica", "Arial", "sans-serif"],
+        mono: ["SF Mono", "Fira Code", "Consolas", "monospace"],
+      },
+      screens: {
+        xs: "480px",
+      },
     },
   },
   plugins: [],

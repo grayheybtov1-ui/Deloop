@@ -1,13 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Navbar } from "@/components/Navbar";
-import { Footer } from "@/components/Footer";
 import { ToastProvider } from "@/components/Toast";
 
 export const metadata: Metadata = {
-  title: "Deloop Gram - Instagram for Developers",
-  description: "Web App for developers to showcase projects, connect with peers, send direct messages, and build identity.",
-  keywords: ["Deloop", "DevGram", "Developer Instagram", "React", "Next.js", "Supabase"],
+  title: "Deloop Gram",
+  description: "Developers üçün Instagram. Layihələrini paylaş, developer-lərlə əlaqə qur.",
+  keywords: ["Deloop", "DevGram", "Developer", "Portfolio", "Projects"],
   authors: [{ name: "Deloop Team" }],
   manifest: "/manifest.json",
   appleWebApp: {
@@ -20,7 +19,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#090d16" },
+    { media: "(prefers-color-scheme: dark)", color: "#000000" },
   ],
   width: "device-width",
   initialScale: 1,
@@ -35,13 +34,20 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="az" className="scroll-smooth">
-      <body className="flex flex-col min-h-screen bg-slate-50 dark:bg-[#090d16] text-slate-900 dark:text-slate-100 antialiased selection:bg-blue-600 selection:text-white pb-16 md:pb-0">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+      </head>
+      <body className="min-h-screen antialiased" style={{ backgroundColor: "var(--bg-main)", color: "var(--text-main)" }}>
         <ToastProvider>
           <Navbar />
-          <main className="flex-1 w-full max-w-5xl mx-auto px-2.5 sm:px-4 lg:px-6 py-4 md:py-6">
+          {/* main content — padding-bottom for mobile bottom nav */}
+          <main
+            className="w-full max-w-[935px] mx-auto px-0 sm:px-4"
+            style={{ paddingTop: "60px", paddingBottom: "60px" }}
+          >
             {children}
           </main>
-          <Footer />
         </ToastProvider>
       </body>
     </html>

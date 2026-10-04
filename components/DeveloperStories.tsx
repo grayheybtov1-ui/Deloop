@@ -10,51 +10,115 @@ export function DeveloperStories() {
   const currentUser = localStore.getCurrentUser();
 
   return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 overflow-x-auto no-scrollbar shadow-sm">
-      <div className="flex items-center gap-3.5 min-w-max">
-        
-        {/* CREATE STORY / MY PROFILE STORY ITEM */}
-        <div className="flex flex-col items-center gap-1 cursor-pointer group">
+    <div
+      className="overflow-x-auto no-scrollbar"
+      style={{
+        borderBottom: "1px solid var(--border-color)",
+        padding: "16px 4px",
+        backgroundColor: "var(--bg-card)",
+      }}
+    >
+      <div className="flex items-start gap-4" style={{ minWidth: "max-content", padding: "0 12px" }}>
+
+        {/* MY STORY — Add Story */}
+        <div className="flex flex-col items-center gap-1.5 cursor-pointer group" style={{ width: "64px" }}>
           <div className="relative">
             <img
-              src={currentUser?.avatar_url || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150"}
+              src={
+                currentUser?.avatar_url ||
+                `https://ui-avatars.com/api/?name=${currentUser?.full_name || "U"}&background=random&size=120`
+              }
               alt="Hekayəniz"
-              className="w-14 h-14 sm:w-15 sm:h-15 rounded-full object-cover border-2 border-white dark:border-slate-900 group-hover:scale-105 transition-transform"
+              className="object-cover rounded-full"
+              style={{
+                width: "56px",
+                height: "56px",
+                border: "1px solid var(--border-color)",
+              }}
             />
-            <div className="absolute bottom-0 right-0 w-4.5 h-4.5 rounded-full bg-blue-600 text-white border-2 border-white dark:border-slate-900 flex items-center justify-center">
-              <Plus className="w-3 h-3" />
+            {/* Blue Plus Badge */}
+            <div
+              className="absolute bottom-0 right-0 flex items-center justify-center rounded-full text-white"
+              style={{
+                width: "20px",
+                height: "20px",
+                backgroundColor: "#0095f6",
+                border: "2px solid var(--bg-card)",
+              }}
+            >
+              <Plus className="w-3 h-3" strokeWidth={3} />
             </div>
           </div>
-          <span className="text-[11px] font-medium text-slate-700 dark:text-slate-300 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+          <span
+            className="text-center truncate"
+            style={{
+              fontSize: "11px",
+              color: "var(--text-main)",
+              width: "64px",
+              display: "block",
+              textAlign: "center",
+            }}
+          >
             Hekayəniz
           </span>
         </div>
 
-        {/* DEVELOPERS STORIES LIST */}
-        {profiles.map((profile, idx) => (
+        {/* OTHER DEVELOPERS STORIES */}
+        {profiles.slice(0, 10).map((profile, idx) => (
           <Link
             key={profile.id}
             href={`/developers/${profile.username}`}
-            className="flex flex-col items-center gap-1 group"
+            className="flex flex-col items-center gap-1.5 group"
+            style={{ width: "64px", textDecoration: "none" }}
           >
-            {/* Instagram Story Gradient Border */}
-            <div className={`p-[2px] rounded-full transition-transform group-hover:scale-105 ${
-              idx % 2 === 0
-                ? "bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600"
-                : "bg-gradient-to-tr from-cyan-400 via-blue-500 to-indigo-600"
-            }`}>
-              <img
-                src={profile.avatar_url || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150"}
-                alt={profile.full_name}
-                className="w-13.5 h-13.5 sm:w-14.5 sm:h-14.5 rounded-full object-cover border-2 border-white dark:border-slate-950"
-              />
+            {/* Instagram Gradient Story Ring */}
+            <div
+              className="rounded-full flex items-center justify-center"
+              style={{
+                width: "60px",
+                height: "60px",
+                background:
+                  idx % 3 === 0
+                    ? "linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)"
+                    : idx % 3 === 1
+                    ? "linear-gradient(45deg, #833ab4, #fd1d1d, #fcb045)"
+                    : "linear-gradient(45deg, #405de6, #5851db, #833ab4, #c13584, #e1306c, #fd1d1d)",
+                padding: "2px",
+              }}
+            >
+              <div
+                className="rounded-full"
+                style={{
+                  width: "56px",
+                  height: "56px",
+                  backgroundColor: "var(--bg-card)",
+                  padding: "2px",
+                }}
+              >
+                <img
+                  src={
+                    profile.avatar_url ||
+                    `https://ui-avatars.com/api/?name=${profile.full_name}&background=random&size=120`
+                  }
+                  alt={profile.full_name}
+                  className="w-full h-full rounded-full object-cover"
+                />
+              </div>
             </div>
-            <span className="text-[11px] font-medium text-slate-700 dark:text-slate-300 group-hover:text-blue-600 dark:group-hover:text-blue-400 max-w-[62px] truncate text-center">
+            <span
+              className="truncate text-center"
+              style={{
+                fontSize: "11px",
+                color: "var(--text-main)",
+                width: "64px",
+                display: "block",
+                textAlign: "center",
+              }}
+            >
               {profile.username}
             </span>
           </Link>
         ))}
-
       </div>
     </div>
   );
