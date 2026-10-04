@@ -4,15 +4,15 @@ import { Navbar } from "@/components/Navbar";
 import { ToastProvider } from "@/components/Toast";
 
 export const metadata: Metadata = {
-  title: "Deloop Gram",
-  description: "Developers üçün Instagram. Layihələrini paylaş, developer-lərlə əlaqə qur.",
+  title: "Deloop",
+  description: "Developers üçün sosial platforma. Layihələrini paylaş, developer-lərlə əlaqə qur.",
   keywords: ["Deloop", "DevGram", "Developer", "Portfolio", "Projects"],
   authors: [{ name: "Deloop Team" }],
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Deloop Gram",
+    title: "Deloop",
   },
 };
 

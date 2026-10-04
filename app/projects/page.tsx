@@ -196,7 +196,7 @@ export default function ProjectsFeedPage() {
                 </React.Fragment>
               ))}
             </div>
-            <p>© 2026 DELOOP GRAM</p>
+            <p>© 2026 DELOOP</p>
           </div>
         </div>
       </div>

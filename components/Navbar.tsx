@@ -89,7 +89,7 @@ export function Navbar() {
                 backgroundClip: "text",
               }}
             >
-              Deloop Gram
+              Deloop
             </span>
           </Link>
 
