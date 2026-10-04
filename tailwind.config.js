@@ -9,6 +9,15 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        Deloop: {
+          bg: "var(--bg-main)",
+          card: "var(--bg-card)",
+          border: "var(--border-color)",
+          borderHover: "var(--border-hover)",
+          muted: "var(--text-muted)",
+          accent: "var(--color-accent)",
+          accentHover: "#1d4ed8",
+        },
         devhub: {
           bg: "#0b0f19",
           card: "#111827",
@@ -17,8 +26,6 @@ module.exports = {
           muted: "#9ca3af",
           accent: "#3b82f6",
           accentHover: "#2563eb",
-          purple: "#8b5cf6",
-          emerald: "#10b981",
         }
       },
       fontFamily: {
