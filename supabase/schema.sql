@@ -106,35 +106,53 @@ ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 
 -- Profiles: Anyone can view profiles, user can update their own
+DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON public.profiles;
 CREATE POLICY "Public profiles are viewable by everyone" ON public.profiles FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
 CREATE POLICY "Users can insert their own profile" ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
 CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
 
 -- Projects: Anyone can view, author can insert/update/delete
+DROP POLICY IF EXISTS "Projects are viewable by everyone" ON public.projects;
 CREATE POLICY "Projects are viewable by everyone" ON public.projects FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Users can create projects" ON public.projects;
 CREATE POLICY "Users can create projects" ON public.projects FOR INSERT WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can update own projects" ON public.projects;
 CREATE POLICY "Users can update own projects" ON public.projects FOR UPDATE USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can delete own projects" ON public.projects;
 CREATE POLICY "Users can delete own projects" ON public.projects FOR DELETE USING (auth.uid() = user_id);
 
 -- Likes: Public view, authenticated user create/delete own likes
+DROP POLICY IF EXISTS "Likes are viewable by everyone" ON public.project_likes;
 CREATE POLICY "Likes are viewable by everyone" ON public.project_likes FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Users can toggle likes" ON public.project_likes;
 CREATE POLICY "Users can toggle likes" ON public.project_likes FOR ALL USING (auth.uid() = user_id);
 
 -- Comments: Public view, authenticated user create/delete own comments
+DROP POLICY IF EXISTS "Comments are viewable by everyone" ON public.comments;
 CREATE POLICY "Comments are viewable by everyone" ON public.comments FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Users can create comments" ON public.comments;
 CREATE POLICY "Users can create comments" ON public.comments FOR INSERT WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can delete own comments" ON public.comments;
 CREATE POLICY "Users can delete own comments" ON public.comments FOR DELETE USING (auth.uid() = user_id);
 
 -- Follows: Public view, authenticated user toggle follow
+DROP POLICY IF EXISTS "Follows are viewable by everyone" ON public.follows;
 CREATE POLICY "Follows are viewable by everyone" ON public.follows FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Users can follow/unfollow" ON public.follows;
 CREATE POLICY "Users can follow/unfollow" ON public.follows FOR ALL USING (auth.uid() = follower_id);
 
 -- Notifications: User can view & update own notifications
+DROP POLICY IF EXISTS "Users can view own notifications" ON public.notifications;
 CREATE POLICY "Users can view own notifications" ON public.notifications FOR SELECT USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can update own notifications" ON public.notifications;
 CREATE POLICY "Users can update own notifications" ON public.notifications FOR UPDATE USING (auth.uid() = user_id);
 
 -- Messages: Users can view messages they sent or received, send messages as themselves
+DROP POLICY IF EXISTS "Users can view own direct messages" ON public.messages;
 CREATE POLICY "Users can view own direct messages" ON public.messages FOR SELECT USING (auth.uid() = sender_id OR auth.uid() = receiver_id);
+DROP POLICY IF EXISTS "Users can send direct messages" ON public.messages;
 CREATE POLICY "Users can send direct messages" ON public.messages FOR INSERT WITH CHECK (auth.uid() = sender_id);
 
 -- TRIGGER FOR AUTOMATIC PROFILE CREATION ON SIGNUP
