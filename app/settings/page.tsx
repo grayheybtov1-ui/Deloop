@@ -7,26 +7,25 @@ import {
   User, 
   Lock, 
   Share2, 
-  Palette, 
+  Globe, 
   Save, 
   CheckCircle2, 
   Github, 
-  Globe, 
   Linkedin,
-  Code2 
 } from "lucide-react";
 
 import { Profile, DeveloperTitle } from "@/types";
 import { localStore } from "@/lib/supabase/store";
-import { Sidebar } from "@/components/Sidebar";
 import { useToast } from "@/components/Toast";
+import { getSavedLanguage, setSavedLanguage, translations, Language } from "@/lib/i18n";
 
 export default function SettingsPage() {
   const router = useRouter();
   const { showToast } = useToast();
 
   const [user, setUser] = useState<Profile | null>(null);
-  const [activeSection, setActiveSection] = useState<"profile" | "security" | "social" | "appearance">("profile");
+  const [activeSection, setActiveSection] = useState<"profile" | "social" | "security" | "language">("profile");
+  const [lang, setLang] = useState<Language>("tr");
 
   // FORM FIELDS
   const [fullName, setFullName] = useState("");
@@ -40,9 +39,11 @@ export default function SettingsPage() {
   const [linkedinUrl, setLinkedinUrl] = useState("");
 
   const [newPassword, setNewPassword] = useState("");
-  const [theme, setTheme] = useState("dark");
 
   useEffect(() => {
+    const currentLang = getSavedLanguage();
+    setLang(currentLang);
+
     const curr = localStore.getCurrentUser();
     if (!curr) {
       router.push("/login");
@@ -58,6 +59,18 @@ export default function SettingsPage() {
     setWebsite(curr.website || "");
     setLinkedinUrl(curr.linkedin_url || "");
   }, [router]);
+
+  const t = translations[lang] || translations.tr;
+
+  const handleLanguageChange = (newLang: Language) => {
+    setLang(newLang);
+    setSavedLanguage(newLang);
+    showToast(
+      newLang === "tr" ? "Dil Değiştirildi: Türkçe" : newLang === "az" ? "Dil Dəyişdirildi: Azərbaycan dili" : "Language Changed: English",
+      undefined,
+      "success"
+    );
+  };
 
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,307 +94,338 @@ export default function SettingsPage() {
 
     if (updated) {
       setUser(updated);
-      showToast("Settings Saved", "Your profile details have been updated.", "success");
+      showToast(t.settings.savedToast, undefined, "success");
     }
   };
 
   const handlePasswordUpdate = (e: React.FormEvent) => {
     e.preventDefault();
     if (newPassword.length < 6) {
-      showToast("Error", "Password must be at least 6 characters.", "error");
+      showToast(lang === "tr" ? "Şifre en az 6 karakter olmalıdır" : "Şifrə ən az 6 simvol olmalıdır", undefined, "error");
       return;
     }
     setNewPassword("");
-    showToast("Security", "Password updated successfully.", "success");
+    showToast(lang === "tr" ? "Şifre başarıyla güncellendi" : "Şifrə yeniləndi", undefined, "success");
   };
 
   if (!user) return null;
 
   return (
-    <div className="flex flex-col lg:flex-row gap-8">
-      <Sidebar user={user} />
+    <div className="w-full max-w-3xl mx-auto space-y-6 pb-20 pt-2 px-2 sm:px-4">
+      
+      {/* SETTINGS HEADER */}
+      <div className="pb-4 border-b border-neutral-800">
+        <h1 className="text-2xl font-bold text-white flex items-center gap-2.5">
+          <SettingsIcon className="w-6 h-6 text-blue-500" />
+          <span>{t.settings.title}</span>
+        </h1>
+        <p className="text-xs text-neutral-400 mt-1">
+          {t.settings.subtitle}
+        </p>
+      </div>
 
-      <div className="flex-1 space-y-6">
-        
-        {/* SETTINGS HEADER */}
-        <div className="bg-Deloop-card border border-Deloop-border rounded-xl p-6">
-          <h1 className="text-2xl font-bold text-slate-100 flex items-center gap-2">
-            <SettingsIcon className="w-6 h-6 text-Deloop-accent" />
-            <span>Account Settings</span>
-          </h1>
-          <p className="text-xs text-slate-400 mt-1">
-            Manage your developer profile details, specialization, security, and social links.
-          </p>
-        </div>
+      {/* SECTION TABS */}
+      <div className="flex items-center gap-2 border-b border-neutral-800 pb-2 overflow-x-auto text-xs font-medium">
+        <button
+          onClick={() => setActiveSection("profile")}
+          className={`px-3.5 py-2 rounded-lg flex items-center gap-2 transition-colors shrink-0 ${
+            activeSection === "profile"
+              ? "bg-neutral-800 text-white font-semibold"
+              : "text-neutral-400 hover:text-neutral-200 hover:bg-neutral-900"
+          }`}
+        >
+          <User className="w-4 h-4" />
+          <span>{t.settings.tabProfile}</span>
+        </button>
 
-        {/* SECTION TABS */}
-        <div className="flex items-center gap-2 border-b border-Deloop-border pb-2 overflow-x-auto text-xs font-mono">
-          <button
-            onClick={() => setActiveSection("profile")}
-            className={`px-4 py-2 rounded-lg font-semibold flex items-center gap-2 transition-colors shrink-0 ${
-              activeSection === "profile"
-                ? "bg-Deloop-accent text-white"
-                : "text-slate-400 hover:text-slate-200 hover:bg-slate-900"
-            }`}
-          >
-            <User className="w-4 h-4" />
-            <span>Profile Details</span>
-          </button>
+        <button
+          onClick={() => setActiveSection("language")}
+          className={`px-3.5 py-2 rounded-lg flex items-center gap-2 transition-colors shrink-0 ${
+            activeSection === "language"
+              ? "bg-neutral-800 text-white font-semibold"
+              : "text-neutral-400 hover:text-neutral-200 hover:bg-neutral-900"
+          }`}
+        >
+          <Globe className="w-4 h-4" />
+          <span>{t.settings.tabLanguage}</span>
+        </button>
 
-          <button
-            onClick={() => setActiveSection("social")}
-            className={`px-4 py-2 rounded-lg font-semibold flex items-center gap-2 transition-colors shrink-0 ${
-              activeSection === "social"
-                ? "bg-Deloop-accent text-white"
-                : "text-slate-400 hover:text-slate-200 hover:bg-slate-900"
-            }`}
-          >
-            <Share2 className="w-4 h-4" />
-            <span>Social & GitHub</span>
-          </button>
+        <button
+          onClick={() => setActiveSection("social")}
+          className={`px-3.5 py-2 rounded-lg flex items-center gap-2 transition-colors shrink-0 ${
+            activeSection === "social"
+              ? "bg-neutral-800 text-white font-semibold"
+              : "text-neutral-400 hover:text-neutral-200 hover:bg-neutral-900"
+          }`}
+        >
+          <Share2 className="w-4 h-4" />
+          <span>{t.settings.tabSocial}</span>
+        </button>
 
-          <button
-            onClick={() => setActiveSection("security")}
-            className={`px-4 py-2 rounded-lg font-semibold flex items-center gap-2 transition-colors shrink-0 ${
-              activeSection === "security"
-                ? "bg-Deloop-accent text-white"
-                : "text-slate-400 hover:text-slate-200 hover:bg-slate-900"
-            }`}
-          >
-            <Lock className="w-4 h-4" />
-            <span>Security</span>
-          </button>
+        <button
+          onClick={() => setActiveSection("security")}
+          className={`px-3.5 py-2 rounded-lg flex items-center gap-2 transition-colors shrink-0 ${
+            activeSection === "security"
+              ? "bg-neutral-800 text-white font-semibold"
+              : "text-neutral-400 hover:text-neutral-200 hover:bg-neutral-900"
+          }`}
+        >
+          <Lock className="w-4 h-4" />
+          <span>{t.settings.tabSecurity}</span>
+        </button>
+      </div>
 
-          <button
-            onClick={() => setActiveSection("appearance")}
-            className={`px-4 py-2 rounded-lg font-semibold flex items-center gap-2 transition-colors shrink-0 ${
-              activeSection === "appearance"
-                ? "bg-Deloop-accent text-white"
-                : "text-slate-400 hover:text-slate-200 hover:bg-slate-900"
-            }`}
-          >
-            <Palette className="w-4 h-4" />
-            <span>Appearance</span>
-          </button>
-        </div>
+      {/* TAB CONTENT: PROFILE DETAILS */}
+      {activeSection === "profile" && (
+        <form onSubmit={handleSaveProfile} className="space-y-5 rounded-2xl bg-neutral-900/40 border border-neutral-800 p-5 sm:p-6">
+          <h3 className="font-semibold text-white text-sm border-b border-neutral-800 pb-3">
+            {lang === "tr" ? "Geliştirici Kimlik Bilgileri" : "Tərtibatçı Məlumatları"}
+          </h3>
 
-        {/* TAB CONTENT: PROFILE DETAILS */}
-        {activeSection === "profile" && (
-          <form onSubmit={handleSaveProfile} className="bg-Deloop-card border border-Deloop-border rounded-xl p-6 space-y-6">
-            <h3 className="font-bold text-slate-100 text-sm border-b border-Deloop-border pb-3">
-              Developer Identity Information
-            </h3>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-slate-300 font-mono">Full Name</label>
-                <input
-                  type="text"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-lg bg-slate-900 border border-Deloop-border text-slate-100 text-sm focus:outline-none focus:border-Deloop-accent"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-slate-300 font-mono">Developer Specialization</label>
-                <select
-                  value={developerTitle}
-                  onChange={(e) => setDeveloperTitle(e.target.value as DeveloperTitle)}
-                  className="w-full px-4 py-2.5 rounded-lg bg-slate-900 border border-Deloop-border text-slate-100 text-sm focus:outline-none focus:border-Deloop-accent font-mono"
-                >
-                  <option value="Full-Stack Developer">Full-Stack Developer</option>
-                  <option value="Frontend Developer">Frontend Developer</option>
-                  <option value="Backend Developer">Backend Developer</option>
-                  <option value="AI / Data Engineer">AI / Data Engineer</option>
-                  <option value="Mobile Developer">Mobile Developer</option>
-                  <option value="DevOps Engineer">DevOps Engineer</option>
-                </select>
-              </div>
-
-              <div className="md:col-span-2 space-y-1.5">
-                <label className="block text-xs font-semibold text-slate-300 font-mono">Location</label>
-                <input
-                  type="text"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  placeholder="e.g. Baku, Azerbaijan"
-                  className="w-full px-4 py-2.5 rounded-lg bg-slate-900 border border-Deloop-border text-slate-100 text-sm focus:outline-none focus:border-Deloop-accent"
-                />
-              </div>
-
-              <div className="md:col-span-2 space-y-1.5">
-                <label className="block text-xs font-semibold text-slate-300 font-mono">Developer Bio</label>
-                <textarea
-                  rows={3}
-                  value={bio}
-                  onChange={(e) => setBio(e.target.value)}
-                  placeholder="Brief summary of your architectural focus, experience, and interests..."
-                  className="w-full px-4 py-2.5 rounded-lg bg-slate-900 border border-Deloop-border text-slate-100 text-sm focus:outline-none focus:border-Deloop-accent leading-relaxed"
-                />
-              </div>
-
-              <div className="md:col-span-2 space-y-1.5">
-                <label className="block text-xs font-semibold text-slate-300 font-mono">Skills (Comma Separated)</label>
-                <input
-                  type="text"
-                  value={skillsInput}
-                  onChange={(e) => setSkillsInput(e.target.value)}
-                  placeholder="Next.js, React, TypeScript, Node.js, PostgreSQL"
-                  className="w-full px-4 py-2.5 rounded-lg bg-slate-900 border border-Deloop-border text-slate-100 text-sm focus:outline-none focus:border-Deloop-accent font-mono"
-                />
-              </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold text-neutral-300">
+                {lang === "tr" ? "Ad Soyad" : "Ad və Soyad"}
+              </label>
+              <input
+                type="text"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                className="w-full px-3.5 py-2 rounded-xl bg-neutral-900 border border-neutral-800 text-white text-xs sm:text-sm focus:outline-none focus:border-blue-500"
+              />
             </div>
 
-            <div className="pt-3 border-t border-Deloop-border flex justify-end">
-              <button
-                type="submit"
-                className="px-5 py-2.5 rounded-lg bg-Deloop-accent hover:bg-Deloop-accentHover text-white text-xs font-semibold shadow-md flex items-center gap-2"
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold text-neutral-300">
+                {lang === "tr" ? "Uzmanlık Alanı" : "İxtisas"}
+              </label>
+              <select
+                value={developerTitle}
+                onChange={(e) => setDeveloperTitle(e.target.value as DeveloperTitle)}
+                className="w-full px-3.5 py-2 rounded-xl bg-neutral-900 border border-neutral-800 text-white text-xs sm:text-sm focus:outline-none focus:border-blue-500"
               >
-                <Save className="w-4 h-4" />
-                <span>Save Profile</span>
-              </button>
-            </div>
-          </form>
-        )}
-
-        {/* TAB CONTENT: SOCIAL LINKS */}
-        {activeSection === "social" && (
-          <form onSubmit={handleSaveProfile} className="bg-Deloop-card border border-Deloop-border rounded-xl p-6 space-y-6">
-            <h3 className="font-bold text-slate-100 text-sm border-b border-Deloop-border pb-3">
-              GitHub & Social Profiles
-            </h3>
-
-            <div className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-slate-300 font-mono flex items-center gap-1.5">
-                  <Github className="w-4 h-4 text-slate-400" />
-                  GitHub Username (for API integration)
-                </label>
-                <input
-                  type="text"
-                  value={githubUsername}
-                  onChange={(e) => setGithubUsername(e.target.value)}
-                  placeholder="octocat"
-                  className="w-full px-4 py-2.5 rounded-lg bg-slate-900 border border-Deloop-border text-slate-100 text-sm focus:outline-none focus:border-Deloop-accent font-mono"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-slate-300 font-mono flex items-center gap-1.5">
-                  <Globe className="w-4 h-4 text-slate-400" />
-                  Personal Website / Portfolio
-                </label>
-                <input
-                  type="url"
-                  value={website}
-                  onChange={(e) => setWebsite(e.target.value)}
-                  placeholder="https://myportfolio.dev"
-                  className="w-full px-4 py-2.5 rounded-lg bg-slate-900 border border-Deloop-border text-slate-100 text-sm focus:outline-none focus:border-Deloop-accent"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-slate-300 font-mono flex items-center gap-1.5">
-                  <Linkedin className="w-4 h-4 text-slate-400" />
-                  LinkedIn Profile URL
-                </label>
-                <input
-                  type="url"
-                  value={linkedinUrl}
-                  onChange={(e) => setLinkedinUrl(e.target.value)}
-                  placeholder="https://linkedin.com/in/username"
-                  className="w-full px-4 py-2.5 rounded-lg bg-slate-900 border border-Deloop-border text-slate-100 text-sm focus:outline-none focus:border-Deloop-accent"
-                />
-              </div>
+                <option value="Full-Stack Developer">Full-Stack Developer</option>
+                <option value="Frontend Developer">Frontend Developer</option>
+                <option value="Backend Developer">Backend Developer</option>
+                <option value="AI / Data Engineer">AI / Data Engineer</option>
+                <option value="Mobile Developer">Mobile Developer</option>
+                <option value="DevOps Engineer">DevOps Engineer</option>
+              </select>
             </div>
 
-            <div className="pt-3 border-t border-Deloop-border flex justify-end">
-              <button
-                type="submit"
-                className="px-5 py-2.5 rounded-lg bg-Deloop-accent hover:bg-Deloop-accentHover text-white text-xs font-semibold shadow-md flex items-center gap-2"
-              >
-                <Save className="w-4 h-4" />
-                <span>Save Links</span>
-              </button>
-            </div>
-          </form>
-        )}
-
-        {/* TAB CONTENT: SECURITY */}
-        {activeSection === "security" && (
-          <form onSubmit={handlePasswordUpdate} className="bg-Deloop-card border border-Deloop-border rounded-xl p-6 space-y-6">
-            <h3 className="font-bold text-slate-100 text-sm border-b border-Deloop-border pb-3">
-              Password & Supabase Security
-            </h3>
-
-            <div className="space-y-4 max-w-md">
-              <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-slate-300 font-mono">New Password</label>
-                <input
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full px-4 py-2.5 rounded-lg bg-slate-900 border border-Deloop-border text-slate-100 text-sm focus:outline-none focus:border-Deloop-accent font-mono"
-                />
-              </div>
+            <div className="md:col-span-2 space-y-1.5">
+              <label className="block text-xs font-semibold text-neutral-300">
+                {lang === "tr" ? "Konum" : "Məkan"}
+              </label>
+              <input
+                type="text"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                placeholder="Örn: Bakü, Azerbaycan / İstanbul, Türkiye"
+                className="w-full px-3.5 py-2 rounded-xl bg-neutral-900 border border-neutral-800 text-white text-xs sm:text-sm focus:outline-none focus:border-blue-500"
+              />
             </div>
 
-            <div className="pt-3 border-t border-Deloop-border flex justify-end">
-              <button
-                type="submit"
-                className="px-5 py-2.5 rounded-lg bg-Deloop-accent hover:bg-Deloop-accentHover text-white text-xs font-semibold shadow-md flex items-center gap-2"
-              >
-                <Lock className="w-4 h-4" />
-                <span>Update Password</span>
-              </button>
+            <div className="md:col-span-2 space-y-1.5">
+              <label className="block text-xs font-semibold text-neutral-300">
+                {lang === "tr" ? "Biyografi" : "Bio"}
+              </label>
+              <textarea
+                rows={3}
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                placeholder={lang === "tr" ? "Kendinizden ve üzerinde çalıştığınız teknolojilerden bahsedin..." : "Özünüz haqqında qısa məlumat..."}
+                className="w-full px-3.5 py-2 rounded-xl bg-neutral-900 border border-neutral-800 text-white text-xs sm:text-sm focus:outline-none focus:border-blue-500 leading-relaxed"
+              />
             </div>
-          </form>
-        )}
 
-        {/* TAB CONTENT: APPEARANCE */}
-        {activeSection === "appearance" && (
-          <div className="bg-Deloop-card border border-Deloop-border rounded-xl p-6 space-y-6">
-            <h3 className="font-bold text-slate-100 text-sm border-b border-Deloop-border pb-3">
-              Platform Theme & Appearance
-            </h3>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div
-                onClick={() => setTheme("dark")}
-                className={`p-4 rounded-xl border cursor-pointer space-y-2 transition-all ${
-                  theme === "dark"
-                    ? "bg-slate-900 border-Deloop-accent ring-1 ring-Deloop-accent"
-                    : "bg-Deloop-card border-Deloop-border"
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-slate-100 text-xs font-mono">Dark IDE Mode (Default)</span>
-                  {theme === "dark" && <CheckCircle2 className="w-4 h-4 text-Deloop-accent" />}
-                </div>
-                <p className="text-[11px] text-slate-400">Deep slate background with blue/indigo code highlights.</p>
-              </div>
-
-              <div
-                onClick={() => setTheme("light")}
-                className={`p-4 rounded-xl border cursor-pointer space-y-2 transition-all ${
-                  theme === "light"
-                    ? "bg-slate-900 border-Deloop-accent ring-1 ring-Deloop-accent"
-                    : "bg-Deloop-card border-Deloop-border"
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-slate-100 text-xs font-mono">Light Developer Mode</span>
-                  {theme === "light" && <CheckCircle2 className="w-4 h-4 text-Deloop-accent" />}
-                </div>
-                <p className="text-[11px] text-slate-400">Clean high-contrast theme for bright environments.</p>
-              </div>
+            <div className="md:col-span-2 space-y-1.5">
+              <label className="block text-xs font-semibold text-neutral-300">
+                {lang === "tr" ? "Yetenekler (Virgülle ayırın)" : "Bacarıqlar (Vergüllə ayırın)"}
+              </label>
+              <input
+                type="text"
+                value={skillsInput}
+                onChange={(e) => setSkillsInput(e.target.value)}
+                placeholder="React, Next.js, TypeScript, PostgreSQL, Node.js"
+                className="w-full px-3.5 py-2 rounded-xl bg-neutral-900 border border-neutral-800 text-white text-xs sm:text-sm focus:outline-none focus:border-blue-500 font-mono"
+              />
             </div>
           </div>
-        )}
 
-      </div>
+          <div className="pt-3 border-t border-neutral-800 flex justify-end">
+            <button
+              type="submit"
+              className="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold flex items-center gap-2 transition-colors"
+            >
+              <Save className="w-3.5 h-3.5" />
+              <span>{t.settings.save}</span>
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* TAB CONTENT: LANGUAGE & APPEARANCE (DİL SEÇİMİ) */}
+      {activeSection === "language" && (
+        <div className="space-y-5 rounded-2xl bg-neutral-900/40 border border-neutral-800 p-5 sm:p-6">
+          <div className="border-b border-neutral-800 pb-3">
+            <h3 className="font-semibold text-white text-sm">
+              {t.settings.languageTitle}
+            </h3>
+            <p className="text-xs text-neutral-400 mt-1">
+              {t.settings.languageSubtitle}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {/* TÜRKÇE */}
+            <div
+              onClick={() => handleLanguageChange("tr")}
+              className={`p-4 rounded-xl border cursor-pointer space-y-2 transition-all ${
+                lang === "tr"
+                  ? "bg-neutral-800/90 border-blue-500 ring-1 ring-blue-500/50"
+                  : "bg-neutral-900/50 border-neutral-800 hover:border-neutral-700"
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-white text-sm">🇹🇷 Türkçe</span>
+                {lang === "tr" && <CheckCircle2 className="w-4 h-4 text-blue-400" />}
+              </div>
+              <p className="text-xs text-neutral-400">Varsayılan platform dili.</p>
+            </div>
+
+            {/* AZƏRBAYCAN DİLİ */}
+            <div
+              onClick={() => handleLanguageChange("az")}
+              className={`p-4 rounded-xl border cursor-pointer space-y-2 transition-all ${
+                lang === "az"
+                  ? "bg-neutral-800/90 border-blue-500 ring-1 ring-blue-500/50"
+                  : "bg-neutral-900/50 border-neutral-800 hover:border-neutral-700"
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-white text-sm">🇦🇿 Azərbaycan</span>
+                {lang === "az" && <CheckCircle2 className="w-4 h-4 text-blue-400" />}
+              </div>
+              <p className="text-xs text-neutral-400">Azərbaycan dili seçimi.</p>
+            </div>
+
+            {/* ENGLISH */}
+            <div
+              onClick={() => handleLanguageChange("en")}
+              className={`p-4 rounded-xl border cursor-pointer space-y-2 transition-all ${
+                lang === "en"
+                  ? "bg-neutral-800/90 border-blue-500 ring-1 ring-blue-500/50"
+                  : "bg-neutral-900/50 border-neutral-800 hover:border-neutral-700"
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-white text-sm">🇬🇧 English</span>
+                {lang === "en" && <CheckCircle2 className="w-4 h-4 text-blue-400" />}
+              </div>
+              <p className="text-xs text-neutral-400">International English language.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB CONTENT: SOCIAL LINKS */}
+      {activeSection === "social" && (
+        <form onSubmit={handleSaveProfile} className="space-y-5 rounded-2xl bg-neutral-900/40 border border-neutral-800 p-5 sm:p-6">
+          <h3 className="font-semibold text-white text-sm border-b border-neutral-800 pb-3">
+            {lang === "tr" ? "GitHub ve Sosyal Bağlantılar" : "GitHub və Sosial Şəbəkələr"}
+          </h3>
+
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold text-neutral-300 flex items-center gap-1.5">
+                <Github className="w-4 h-4 text-neutral-400" />
+                GitHub Username
+              </label>
+              <input
+                type="text"
+                value={githubUsername}
+                onChange={(e) => setGithubUsername(e.target.value)}
+                placeholder="octocat"
+                className="w-full px-3.5 py-2 rounded-xl bg-neutral-900 border border-neutral-800 text-white text-xs sm:text-sm focus:outline-none focus:border-blue-500 font-mono"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold text-neutral-300 flex items-center gap-1.5">
+                <Globe className="w-4 h-4 text-neutral-400" />
+                Portfolio / Web Sitesi
+              </label>
+              <input
+                type="url"
+                value={website}
+                onChange={(e) => setWebsite(e.target.value)}
+                placeholder="https://myportfolio.dev"
+                className="w-full px-3.5 py-2 rounded-xl bg-neutral-900 border border-neutral-800 text-white text-xs sm:text-sm focus:outline-none focus:border-blue-500"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold text-neutral-300 flex items-center gap-1.5">
+                <Linkedin className="w-4 h-4 text-neutral-400" />
+                LinkedIn URL
+              </label>
+              <input
+                type="url"
+                value={linkedinUrl}
+                onChange={(e) => setLinkedinUrl(e.target.value)}
+                placeholder="https://linkedin.com/in/username"
+                className="w-full px-3.5 py-2 rounded-xl bg-neutral-900 border border-neutral-800 text-white text-xs sm:text-sm focus:outline-none focus:border-blue-500"
+              />
+            </div>
+          </div>
+
+          <div className="pt-3 border-t border-neutral-800 flex justify-end">
+            <button
+              type="submit"
+              className="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold flex items-center gap-2 transition-colors"
+            >
+              <Save className="w-3.5 h-3.5" />
+              <span>{t.settings.save}</span>
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* TAB CONTENT: SECURITY */}
+      {activeSection === "security" && (
+        <form onSubmit={handlePasswordUpdate} className="space-y-5 rounded-2xl bg-neutral-900/40 border border-neutral-800 p-5 sm:p-6">
+          <h3 className="font-semibold text-white text-sm border-b border-neutral-800 pb-3">
+            {lang === "tr" ? "Şifre ve Güvenlik" : "Şifrə və Təhlükəsizlik"}
+          </h3>
+
+          <div className="space-y-4 max-w-md">
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold text-neutral-300">
+                {lang === "tr" ? "Yeni Şifre" : "Yeni Şifrə"}
+              </label>
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full px-3.5 py-2 rounded-xl bg-neutral-900 border border-neutral-800 text-white text-xs sm:text-sm focus:outline-none focus:border-blue-500 font-mono"
+              />
+            </div>
+          </div>
+
+          <div className="pt-3 border-t border-neutral-800 flex justify-end">
+            <button
+              type="submit"
+              className="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold flex items-center gap-2 transition-colors"
+            >
+              <Lock className="w-3.5 h-3.5" />
+              <span>{lang === "tr" ? "Şifreyi Güncelle" : "Şifrəni Yenilə"}</span>
+            </button>
+          </div>
+        </form>
+      )}
+
     </div>
   );
 }

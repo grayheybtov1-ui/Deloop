@@ -4,13 +4,14 @@ import React, { useState } from "react";
 import { Search, Filter, Users, Terminal } from "lucide-react";
 import { localStore } from "@/lib/supabase/store";
 import { DeveloperCard } from "@/components/DeveloperCard";
-import { DeveloperCardSkeleton } from "@/components/Skeleton";
+import { getSavedLanguage, Language } from "@/lib/i18n";
 
-const SKILL_FILTERS = ["All", "React", "Next.js", "TypeScript", "Node.js", "Python", "AI", "Go", "Tailwind CSS"];
+const SKILL_FILTERS = ["Tümü", "React", "Next.js", "TypeScript", "Node.js", "Python", "AI", "Go", "Tailwind CSS"];
 
 export default function DevelopersPage() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedSkill, setSelectedSkill] = useState("All");
+  const [selectedSkill, setSelectedSkill] = useState("Tümü");
+  const lang: Language = getSavedLanguage();
 
   const allProfiles = localStore.getProfiles();
 
@@ -24,53 +25,59 @@ export default function DevelopersPage() {
       (p.skills && p.skills.some((s) => s.toLowerCase().includes(q)));
 
     const matchesSkill =
-      selectedSkill === "All" ||
+      selectedSkill === "Tümü" ||
       (p.skills && p.skills.some((s) => s.toLowerCase() === selectedSkill.toLowerCase()));
 
     return matchesSearch && matchesSkill;
   });
 
   return (
-    <div className="space-y-8 py-4">
+    <div className="space-y-6 py-4 px-2 sm:px-4 max-w-5xl mx-auto pb-20">
       
       {/* PAGE HEADER */}
-      <div className="space-y-2">
-        <h1 className="text-3xl font-extrabold text-slate-100 tracking-tight flex items-center gap-2.5">
-          <Users className="w-7 h-7 text-Deloop-accent" />
-          <span>Discover Developers</span>
+      <div className="space-y-1">
+        <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2.5">
+          <Users className="w-6 h-6 text-blue-500" />
+          <span>{lang === "tr" ? "Geliştiricileri Keşfet" : "Tərtibatçıları Kəşf Et"}</span>
         </h1>
-        <p className="text-sm text-slate-400 max-w-2xl">
-          Connect with software engineers, explore their technology stacks, and inspect live GitHub repositories.
+        <p className="text-xs text-neutral-400">
+          {lang === "tr"
+            ? "Yazılım mühendisleriyle tanışın, teknoloji yığınlarını inceleyin ve GitHub projelerini keşfedin."
+            : "Proqramçılarla əlaqə qurun, texnologiya steklərini araşdırın və layihələri kəşf edin."}
         </p>
       </div>
 
       {/* SEARCH AND FILTER BAR */}
-      <div className="bg-Deloop-card border border-Deloop-border rounded-2xl p-4 sm:p-5 space-y-4 shadow-sm">
+      <div className="bg-neutral-900/40 border border-neutral-800 rounded-2xl p-4 space-y-3.5">
         <div className="relative">
-          <Search className="w-5 h-5 text-slate-400 absolute left-4 top-3.5" />
+          <Search className="w-4 h-4 text-neutral-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search developers by name, username, bio, or skill (e.g. Next.js, Python)..."
-            className="w-full pl-12 pr-4 py-3 rounded-xl bg-slate-900 border border-Deloop-border text-slate-100 text-sm focus:outline-none focus:border-Deloop-accent transition-colors"
+            placeholder={
+              lang === "tr"
+                ? "İsim, kullanıcı adı veya teknoloji ile ara (örn: React, Python)..."
+                : "Ad, istifadəçi adı və ya texnologiya ilə axtar..."
+            }
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-neutral-900 border border-neutral-800 text-white text-xs sm:text-sm focus:outline-none focus:border-neutral-600 transition-colors placeholder:text-neutral-500"
           />
         </div>
 
         {/* SKILL PILLS */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-          <span className="text-xs font-mono font-semibold text-slate-400 uppercase tracking-wider shrink-0 flex items-center gap-1 mr-1">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+          <span className="text-xs font-medium text-neutral-400 shrink-0 flex items-center gap-1 mr-1">
             <Filter className="w-3.5 h-3.5" />
-            Skills:
+            {lang === "tr" ? "Yetenekler:" : "Bacarıqlar:"}
           </span>
           {SKILL_FILTERS.map((skill) => (
             <button
               key={skill}
               onClick={() => setSelectedSkill(skill)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-mono font-medium transition-colors shrink-0 ${
+              className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors shrink-0 ${
                 selectedSkill === skill
-                  ? "bg-Deloop-accent text-white font-semibold shadow-sm"
-                  : "bg-slate-900 text-slate-400 border border-Deloop-border hover:bg-slate-800 hover:text-slate-200"
+                  ? "bg-neutral-800 text-white font-semibold"
+                  : "bg-neutral-900 text-neutral-400 border border-neutral-800 hover:text-white"
               }`}
             >
               {skill}
@@ -81,15 +88,19 @@ export default function DevelopersPage() {
 
       {/* DEVELOPERS GRID */}
       {filteredProfiles.length === 0 ? (
-        <div className="bg-Deloop-card border border-Deloop-border rounded-2xl p-12 text-center space-y-3">
-          <Terminal className="w-10 h-10 mx-auto text-slate-600" />
-          <h3 className="font-bold text-slate-200 text-base">No developers found</h3>
-          <p className="text-xs text-slate-400 max-w-sm mx-auto">
-            Try adjusting your search query or removing skill filters to discover registered developers.
+        <div className="bg-neutral-900/30 border border-neutral-800 rounded-2xl p-12 text-center space-y-2">
+          <Terminal className="w-8 h-8 mx-auto text-neutral-600" />
+          <h3 className="font-semibold text-white text-sm">
+            {lang === "tr" ? "Geliştirici bulunamadı" : "Tərtibatçı tapılmadı"}
+          </h3>
+          <p className="text-xs text-neutral-400 max-w-sm mx-auto">
+            {lang === "tr"
+              ? "Arama kriterlerinizi değiştirerek tekrar deneyin."
+              : "Axtarış sorğusunu dəyişərək yenidən yoxlayın."}
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredProfiles.map((profile) => (
             <DeveloperCard key={profile.id} profile={profile} />
           ))}

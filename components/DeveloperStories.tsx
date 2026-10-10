@@ -59,40 +59,34 @@ export function DeveloperStories() {
               textAlign: "center",
             }}
           >
-            Hekayəniz
+            Hikayen
           </span>
         </div>
 
         {/* OTHER DEVELOPERS STORIES */}
-        {profiles.slice(0, 10).map((profile, idx) => (
+        {profiles.slice(0, 10).map((profile) => (
           <Link
             key={profile.id}
             href={`/developers/${profile.username}`}
             className="flex flex-col items-center gap-1.5 group"
             style={{ width: "64px", textDecoration: "none" }}
           >
-            {/* Instagram Gradient Story Ring */}
+            {/* Clean Story Ring */}
             <div
-              className="rounded-full flex items-center justify-center"
+              className="rounded-full flex items-center justify-center transition-transform group-hover:scale-105"
               style={{
                 width: "60px",
                 height: "60px",
-                background:
-                  idx % 3 === 0
-                    ? "linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)"
-                    : idx % 3 === 1
-                    ? "linear-gradient(45deg, #833ab4, #fd1d1d, #fcb045)"
-                    : "linear-gradient(45deg, #405de6, #5851db, #833ab4, #c13584, #e1306c, #fd1d1d)",
+                border: "2px solid #0095f6",
                 padding: "2px",
               }}
             >
               <div
                 className="rounded-full"
                 style={{
-                  width: "56px",
-                  height: "56px",
+                  width: "52px",
+                  height: "52px",
                   backgroundColor: "var(--bg-card)",
-                  padding: "2px",
                 }}
               >
                 <img

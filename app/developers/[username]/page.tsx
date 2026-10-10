@@ -20,8 +20,9 @@ import { localStore } from "@/lib/supabase/store";
 import { GitHubStatsCard } from "@/components/GitHubStatsCard";
 import { useToast } from "@/components/Toast";
 import { ProjectCard } from "@/components/ProjectCard";
+import { getSavedLanguage, translations, Language } from "@/lib/i18n";
 
-export default function DeveloperInstagramProfilePage({ params }: { params: Promise<{ username: string }> }) {
+export default function DeveloperProfilePage({ params }: { params: Promise<{ username: string }> }) {
   const resolvedParams = use(params);
   const username = resolvedParams.username;
   const router = useRouter();
@@ -32,8 +33,10 @@ export default function DeveloperInstagramProfilePage({ params }: { params: Prom
   const [currentUser, setCurrentUser] = useState<Profile | null>(null);
   const [isFollowing, setIsFollowing] = useState(false);
   const [activeTab, setActiveTab] = useState<"grid" | "feed" | "github">("grid");
+  const [lang, setLang] = useState<Language>("tr");
 
   useEffect(() => {
+    setLang(getSavedLanguage());
     const prof = localStore.getProfileByUsername(username);
     if (prof) {
       setProfile(prof);
@@ -42,15 +45,21 @@ export default function DeveloperInstagramProfilePage({ params }: { params: Prom
       setProjects(allProj.filter((p) => p.user_id === prof.id || p.profile?.username === prof.username));
     }
     setCurrentUser(localStore.getCurrentUser());
+
+    const handleLang = () => setLang(getSavedLanguage());
+    window.addEventListener("deloop_lang_changed", handleLang);
+    return () => window.removeEventListener("deloop_lang_changed", handleLang);
   }, [username]);
+
+  const t = translations[lang] || translations.tr;
 
   if (!profile) {
     return (
-      <div className="py-16 text-center space-y-4">
-        <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Tərtibatçı Tapılmadı</h2>
-        <p className="text-xs text-slate-500 dark:text-slate-400">@{username} adlı istifadəçi mövcud deyil.</p>
-        <Link href="/developers" className="inline-block px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-semibold">
-          Tərtibatçılara Qayıt
+      <div className="py-20 text-center space-y-4">
+        <h2 className="text-2xl font-bold text-neutral-100">{t.profile.notFound}</h2>
+        <p className="text-xs text-neutral-400">@{username}</p>
+        <Link href="/developers" className="inline-block px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold">
+          {t.profile.backToDevs}
         </Link>
       </div>
     );
@@ -73,7 +82,7 @@ export default function DeveloperInstagramProfilePage({ params }: { params: Prom
     );
 
     showToast(
-      newStatus ? `@${profile.username} təqib edilir 👤` : `@${profile.username} təqibdən çıxarıldı`,
+      newStatus ? `@${profile.username} ${t.feed.following}` : `@${profile.username}`,
       undefined,
       "info"
     );
@@ -84,29 +93,27 @@ export default function DeveloperInstagramProfilePage({ params }: { params: Prom
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 sm:space-y-8 pb-16">
+    <div className="w-full max-w-4xl mx-auto space-y-6 sm:space-y-8 pb-16 pt-2">
       
-      {/* 1. INSTAGRAM PROFILE HEADER SECTION */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 sm:p-8 space-y-6 shadow-sm">
-        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 sm:gap-8">
+      {/* 1. CLEAN PROFILE HEADER — ÇƏRÇİVƏSİZ (Unboxed & Seamless) */}
+      <div className="w-full px-2 sm:px-6">
+        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 sm:gap-12">
           
-          {/* PROFILE AVATAR WITH INSTAGRAM STORY GRADIENT RING */}
-          <div className="relative shrink-0">
-            <div className="p-1 rounded-full bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 shadow-md">
-              <img
-                src={profile.avatar_url || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300"}
-                alt={profile.full_name}
-                className="w-24 h-24 sm:w-32 sm:h-32 rounded-full object-cover border-4 border-white dark:border-slate-950"
-              />
-            </div>
+          {/* PROFILE AVATAR — Clean, natural circular avatar */}
+          <div className="shrink-0">
+            <img
+              src={profile.avatar_url || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300"}
+              alt={profile.full_name}
+              className="w-24 h-24 sm:w-36 sm:h-36 rounded-full object-cover border border-neutral-700/60 shadow-sm"
+            />
           </div>
 
-          {/* PROFILE DETAILS & ACTION BUTTONS */}
-          <div className="flex-1 text-center sm:text-left space-y-4">
+          {/* PROFILE DETAILS & ACTIONS */}
+          <div className="flex-1 text-center sm:text-left space-y-4 w-full">
             
             {/* USERNAME & BUTTONS ROW */}
             <div className="flex flex-col sm:flex-row items-center gap-3">
-              <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-slate-100 font-mono">
+              <h1 className="text-xl sm:text-2xl font-normal text-white">
                 @{profile.username}
               </h1>
 
@@ -114,60 +121,66 @@ export default function DeveloperInstagramProfilePage({ params }: { params: Prom
                 {isSelf ? (
                   <Link
                     href="/settings"
-                    className="px-4 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold border border-slate-200 dark:border-slate-700 flex items-center gap-1.5"
+                    className="px-4 py-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-neutral-200 text-xs font-semibold border border-neutral-800 flex items-center gap-1.5 transition-colors"
                   >
                     <Settings className="w-3.5 h-3.5" />
-                    <span>Profili Düzəlt</span>
+                    <span>{t.profile.editProfile}</span>
                   </Link>
                 ) : (
                   <>
                     <button
                       onClick={handleFollowToggle}
-                      className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm ${
+                      className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                         isFollowing
-                          ? "bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700"
+                          ? "bg-neutral-900 text-neutral-300 hover:bg-neutral-800 border border-neutral-800"
                           : "bg-blue-600 hover:bg-blue-500 text-white"
                       }`}
                     >
-                      {isFollowing ? "Təqibdədir" : "Təqib Et"}
+                      {isFollowing ? t.profile.following : t.profile.follow}
                     </button>
 
                     <button
                       onClick={handleOpenDM}
-                      className="px-3.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-blue-600 dark:text-blue-400 text-xs font-bold border border-slate-200 dark:border-slate-700 flex items-center gap-1.5"
+                      className="px-3.5 py-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-neutral-200 text-xs font-semibold border border-neutral-800 flex items-center gap-1.5 transition-colors"
                     >
                       <Send className="w-3.5 h-3.5" />
-                      <span>Direkt (DM)</span>
+                      <span>{t.profile.directMessage}</span>
                     </button>
                   </>
                 )}
               </div>
             </div>
 
-            {/* STATS ROW (INSTAGRAM METRICS: POSTS, FOLLOWERS, FOLLOWING) */}
-            <div className="flex items-center justify-center sm:justify-start gap-8 border-y border-slate-100 dark:border-slate-800/80 py-3 text-xs sm:text-sm">
+            {/* METRICS ROW: POSTS, FOLLOWERS, FOLLOWING */}
+            <div className="flex items-center justify-center sm:justify-start gap-8 py-1 text-sm">
               <div>
-                <span className="font-extrabold text-slate-900 dark:text-slate-100 mr-1">{projects.length}</span>
-                <span className="text-slate-500 dark:text-slate-400">Post</span>
+                <span className="font-semibold text-white mr-1.5">{projects.length}</span>
+                <span className="text-neutral-400">{t.profile.posts}</span>
               </div>
               <div>
-                <span className="font-extrabold text-slate-900 dark:text-slate-100 mr-1">{profile.followers_count || 0}</span>
-                <span className="text-slate-500 dark:text-slate-400">Təqibçi</span>
+                <span className="font-semibold text-white mr-1.5">{profile.followers_count || 0}</span>
+                <span className="text-neutral-400">{t.profile.followers}</span>
               </div>
               <div>
-                <span className="font-extrabold text-slate-900 dark:text-slate-100 mr-1">{profile.following_count || 0}</span>
-                <span className="text-slate-500 dark:text-slate-400">Təqib edir</span>
+                <span className="font-semibold text-white mr-1.5">{profile.following_count || 0}</span>
+                <span className="text-neutral-400">{t.profile.followingCount}</span>
               </div>
             </div>
 
-            {/* BIO & LINKS */}
-            <div className="space-y-1.5 text-xs sm:text-sm">
-              <h2 className="font-bold text-slate-900 dark:text-slate-100">{profile.full_name}</h2>
-              <p className="text-blue-600 dark:text-blue-400 font-mono text-xs font-semibold">{profile.developer_title}</p>
-              {profile.bio && <p className="text-slate-700 dark:text-slate-300 leading-relaxed max-w-xl">{profile.bio}</p>}
+            {/* BIO & METADATA */}
+            <div className="space-y-1.5 text-sm">
+              <h2 className="font-semibold text-white">{profile.full_name}</h2>
+              {profile.developer_title && (
+                <p className="text-neutral-400 text-xs font-mono">{profile.developer_title}</p>
+              )}
+              {profile.bio && (
+                <p className="text-neutral-300 text-xs sm:text-sm leading-relaxed max-w-xl whitespace-pre-line pt-0.5">
+                  {profile.bio}
+                </p>
+              )}
 
               {/* SOCIAL & WEBSITE LINKS */}
-              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 pt-2 text-xs text-slate-500 dark:text-slate-400">
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 pt-2 text-xs text-neutral-400">
                 {profile.location && (
                   <span className="flex items-center gap-1">
                     <MapPin className="w-3.5 h-3.5" />
@@ -179,7 +192,7 @@ export default function DeveloperInstagramProfilePage({ params }: { params: Prom
                     href={profile.website}
                     target="_blank"
                     rel="noreferrer"
-                    className="flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:underline"
+                    className="flex items-center gap-1 text-blue-400 hover:underline"
                   >
                     <Globe className="w-3.5 h-3.5" />
                     <span>{profile.website.replace("https://", "")}</span>
@@ -190,7 +203,7 @@ export default function DeveloperInstagramProfilePage({ params }: { params: Prom
                     href={`https://github.com/${profile.github_username}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="flex items-center gap-1 text-slate-700 dark:text-slate-300 hover:text-blue-600"
+                    className="flex items-center gap-1 text-neutral-300 hover:text-white"
                   >
                     <Github className="w-3.5 h-3.5" />
                     <span>github/{profile.github_username}</span>
@@ -204,44 +217,44 @@ export default function DeveloperInstagramProfilePage({ params }: { params: Prom
         </div>
       </div>
 
-      {/* 2. INSTAGRAM PROFILE TABS */}
-      <div className="flex items-center justify-center border-t border-slate-200 dark:border-slate-800">
-        <div className="flex items-center gap-8 sm:gap-12 text-xs font-bold uppercase tracking-wider">
+      {/* 2. PROFILE TABS */}
+      <div className="flex items-center justify-center border-t border-neutral-800">
+        <div className="flex items-center gap-8 sm:gap-14 text-xs font-semibold tracking-wider">
           <button
             onClick={() => setActiveTab("grid")}
-            className={`py-3.5 flex items-center gap-2 border-t-2 transition-colors ${
+            className={`py-3 flex items-center gap-1.5 border-t transition-colors ${
               activeTab === "grid"
-                ? "border-blue-600 dark:border-blue-500 text-blue-600 dark:text-blue-400"
-                : "border-transparent text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                ? "border-white text-white"
+                : "border-transparent text-neutral-500 hover:text-neutral-300"
             }`}
           >
-            <Grid className="w-4 h-4" />
-            <span>POSTLAR (GRID)</span>
+            <Grid className="w-3.5 h-3.5" />
+            <span>{t.profile.gridTab}</span>
           </button>
 
           <button
             onClick={() => setActiveTab("feed")}
-            className={`py-3.5 flex items-center gap-2 border-t-2 transition-colors ${
+            className={`py-3 flex items-center gap-1.5 border-t transition-colors ${
               activeTab === "feed"
-                ? "border-blue-600 dark:border-blue-500 text-blue-600 dark:text-blue-400"
-                : "border-transparent text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                ? "border-white text-white"
+                : "border-transparent text-neutral-500 hover:text-neutral-300"
             }`}
           >
-            <Terminal className="w-4 h-4" />
-            <span>FEED GÖRÜNÜŞÜ</span>
+            <Terminal className="w-3.5 h-3.5" />
+            <span>{t.profile.feedTab}</span>
           </button>
 
           {profile.github_username && (
             <button
               onClick={() => setActiveTab("github")}
-              className={`py-3.5 flex items-center gap-2 border-t-2 transition-colors ${
+              className={`py-3 flex items-center gap-1.5 border-t transition-colors ${
                 activeTab === "github"
-                  ? "border-blue-600 dark:border-blue-500 text-blue-600 dark:text-blue-400"
-                  : "border-transparent text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                  ? "border-white text-white"
+                  : "border-transparent text-neutral-500 hover:text-neutral-300"
               }`}
             >
-              <Github className="w-4 h-4" />
-              <span>GITHUB</span>
+              <Github className="w-3.5 h-3.5" />
+              <span>{t.profile.githubTab}</span>
             </button>
           )}
         </div>
@@ -249,34 +262,34 @@ export default function DeveloperInstagramProfilePage({ params }: { params: Prom
 
       {/* 3. TAB CONTENT */}
       {activeTab === "grid" && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-1 sm:gap-3 px-2 sm:px-0">
           {projects.map((project) => (
             <Link
               key={project.id}
               href={`/projects/${project.id}`}
-              className="relative aspect-square rounded-2xl overflow-hidden bg-slate-950 border border-slate-200 dark:border-slate-800 group"
+              className="relative aspect-square overflow-hidden bg-neutral-900 group rounded-lg"
             >
               {project.cover_image ? (
                 <img
                   src={project.cover_image}
                   alt={project.title}
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 />
               ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center p-3 bg-slate-900 text-slate-400 text-center">
-                  <Terminal className="w-7 h-7 mb-1.5 text-blue-400" />
-                  <span className="font-mono text-xs font-semibold text-slate-200">{project.title}</span>
+                <div className="w-full h-full flex flex-col items-center justify-center p-3 text-neutral-400 text-center">
+                  <Terminal className="w-6 h-6 mb-1 text-blue-400" />
+                  <span className="font-mono text-xs font-semibold text-neutral-200">{project.title}</span>
                 </div>
               )}
 
-              {/* INSTAGRAM HOVER OVERLAY WITH LIKES AND COMMENTS */}
-              <div className="absolute inset-0 bg-black/60 backdrop-blur-xs opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-6 text-white font-bold text-sm">
+              {/* Hover overlay with likes & comments */}
+              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-5 text-white font-semibold text-sm">
                 <div className="flex items-center gap-1.5">
-                  <Heart className="w-5 h-5 fill-white text-white" />
+                  <Heart className="w-4 h-4 fill-white text-white" />
                   <span>{project.likes_count || 0}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <MessageCircle className="w-5 h-5 fill-white text-white" />
+                  <MessageCircle className="w-4 h-4 fill-white text-white" />
                   <span>{project.comments_count || 0}</span>
                 </div>
               </div>
@@ -286,7 +299,7 @@ export default function DeveloperInstagramProfilePage({ params }: { params: Prom
       )}
 
       {activeTab === "feed" && (
-        <div className="max-w-xl mx-auto space-y-5">
+        <div className="max-w-xl mx-auto space-y-4">
           {projects.map((project) => (
             <ProjectCard key={project.id} project={project} />
           ))}

@@ -42,7 +42,7 @@ export function ProjectCard({ project: initialProject }: ProjectCardProps) {
     setHasLiked(result.liked);
     setLikesCount(result.count);
     if (result.liked) {
-      showToast("❤️ Bəyənildi", `"${project.title}"`, "success");
+      showToast("❤️ Beğenildi", `"${project.title}"`, "success");
     }
   };
 
@@ -58,7 +58,7 @@ export function ProjectCard({ project: initialProject }: ProjectCardProps) {
     localStore.addComment(project.id, commentText);
     setCommentsCount((prev) => prev + 1);
     setCommentText("");
-    showToast("💬 Rəy əlavə edildi", "", "success");
+    showToast("💬 Yorum eklendi", "", "success");
   };
 
   const handleDirectMessage = (e: React.MouseEvent) => {
@@ -74,7 +74,7 @@ export function ProjectCard({ project: initialProject }: ProjectCardProps) {
     e.stopPropagation();
     if (typeof window !== "undefined") {
       navigator.clipboard.writeText(`${window.location.origin}/projects/${project.id}`);
-      showToast("🔗 Link kopyalandı", "", "info");
+      showToast("🔗 Bağlantı kopyalandı", "", "info");
     }
   };
 
@@ -90,36 +90,14 @@ export function ProjectCard({ project: initialProject }: ProjectCardProps) {
         <div className="flex items-center gap-2.5">
           {project.profile && (
             <Link href={`/developers/${project.profile.username}`} className="relative">
-              {/* Instagram gradient ring on avatar */}
-              <div
-                className="rounded-full flex items-center justify-center"
-                style={{
-                  width: "34px",
-                  height: "34px",
-                  background:
-                    "linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)",
-                  padding: "2px",
-                }}
-              >
-                <div
-                  style={{
-                    width: "30px",
-                    height: "30px",
-                    borderRadius: "50%",
-                    backgroundColor: "var(--bg-card)",
-                    padding: "1.5px",
-                  }}
-                >
-                  <img
-                    src={
-                      project.profile.avatar_url ||
-                      `https://ui-avatars.com/api/?name=${project.profile.full_name}&background=random&size=80`
-                    }
-                    alt={project.profile.full_name}
-                    className="w-full h-full rounded-full object-cover"
-                  />
-                </div>
-              </div>
+              <img
+                src={
+                  project.profile.avatar_url ||
+                  `https://ui-avatars.com/api/?name=${project.profile.full_name}&background=random&size=80`
+                }
+                alt={project.profile.full_name}
+                className="w-8 h-8 rounded-full object-cover border border-neutral-700/60"
+              />
             </Link>
           )}
 
@@ -333,7 +311,7 @@ export function ProjectCard({ project: initialProject }: ProjectCardProps) {
 
         {/* LIKES COUNT */}
         <p className="text-sm font-semibold" style={{ color: "var(--text-main)" }}>
-          {likesCount.toLocaleString()} bəyənmə
+          {likesCount.toLocaleString()} beğeni
         </p>
 
         {/* CAPTION */}
@@ -368,7 +346,7 @@ export function ProjectCard({ project: initialProject }: ProjectCardProps) {
             className="block"
             style={{ color: "var(--text-muted)", fontSize: "13px", textDecoration: "none" }}
           >
-            Bütün {commentsCount} rəyə baxın
+            Tüm {commentsCount} yorumu gör
           </Link>
         )}
 
@@ -396,7 +374,7 @@ export function ProjectCard({ project: initialProject }: ProjectCardProps) {
         />
         <input
           type="text"
-          placeholder="Rəy əlavə edin..."
+          placeholder="Yorum ekle..."
           value={commentText}
           onChange={(e) => setCommentText(e.target.value)}
           className="flex-1 bg-transparent outline-none text-sm"
