@@ -18,6 +18,7 @@ import {
 
 import { Project, Profile } from "@/types";
 import { localStore } from "@/lib/supabase/store";
+import { dbGetProjectById, dbToggleLike, dbDeleteProject } from "@/lib/supabase/db";
 import { TechBadge } from "@/components/TechBadge";
 import { CommentSection } from "@/components/CommentSection";
 import { Modal } from "@/components/Modal";
@@ -35,16 +36,48 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ id: s
   const [hasLiked, setHasLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(0);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const proj = localStore.getProjectById(id);
-    if (proj) {
-      setProject(proj);
-      setHasLiked(!!proj.user_has_liked);
-      setLikesCount(proj.likes_count || 0);
+    async function fetchProject() {
+      try {
+        const proj = await dbGetProjectById(id);
+        if (proj) {
+          setProject(proj);
+          setHasLiked(!!proj.user_has_liked);
+          setLikesCount(proj.likes_count || 0);
+        } else {
+          const fallback = localStore.getProjectById(id);
+          if (fallback) {
+            setProject(fallback);
+            setHasLiked(!!fallback.user_has_liked);
+            setLikesCount(fallback.likes_count || 0);
+          }
+        }
+      } catch {
+        const fallback = localStore.getProjectById(id);
+        if (fallback) {
+          setProject(fallback);
+          setHasLiked(!!fallback.user_has_liked);
+          setLikesCount(fallback.likes_count || 0);
+        }
+      } finally {
+        setCurrentUser(localStore.getCurrentUser());
+        setLoading(false);
+      }
     }
-    setCurrentUser(localStore.getCurrentUser());
+    fetchProject();
   }, [id]);
+
+  if (loading) {
+    return (
+      <div className="max-w-4xl mx-auto py-8 space-y-6 animate-pulse">
+        <div className="h-6 w-32 bg-slate-800 rounded-lg" />
+        <div className="h-72 w-full bg-slate-800/80 rounded-2xl" />
+        <div className="h-28 w-full bg-slate-800/50 rounded-xl" />
+      </div>
+    );
+  }
 
   if (!project) {
     return (
@@ -60,15 +93,35 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ id: s
 
   const isAuthor = currentUser && (currentUser.id === project.user_id || currentUser.username === project.profile?.username);
 
-  const handleLikeToggle = () => {
-    const res = localStore.toggleLike(project.id);
-    setHasLiked(res.liked);
-    setLikesCount(res.count);
-    showToast(res.liked ? "Liked!" : "Unliked", undefined, "success");
+  const handleLikeToggle = async () => {
+    const prevLiked = hasLiked;
+    const prevCount = likesCount;
+    const optLiked = !prevLiked;
+    const optCount = optLiked ? prevCount + 1 : Math.max(0, prevCount - 1);
+    setHasLiked(optLiked);
+    setLikesCount(optCount);
+
+    try {
+      const res = await dbToggleLike(project.id);
+      setHasLiked(res.liked);
+      setLikesCount(res.count);
+      localStore.toggleLike(project.id);
+      showToast(res.liked ? "Liked!" : "Unliked", undefined, "success");
+    } catch {
+      const res = localStore.toggleLike(project.id);
+      setHasLiked(res.liked);
+      setLikesCount(res.count);
+      showToast(res.liked ? "Liked!" : "Unliked", undefined, "success");
+    }
   };
 
-  const handleDelete = () => {
-    localStore.deleteProject(project.id);
+  const handleDelete = async () => {
+    try {
+      await dbDeleteProject(project.id);
+      localStore.deleteProject(project.id);
+    } catch {
+      localStore.deleteProject(project.id);
+    }
     showToast("Project Deleted", `"${project.title}" has been removed.`, "info");
     router.push("/projects");
   };

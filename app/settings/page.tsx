@@ -12,10 +12,14 @@ import {
   CheckCircle2, 
   Github, 
   Linkedin,
+  Sun,
+  Moon,
+  Palette,
 } from "lucide-react";
 
 import { Profile, DeveloperTitle } from "@/types";
 import { localStore } from "@/lib/supabase/store";
+import { dbUpdateProfile } from "@/lib/supabase/db";
 import { useToast } from "@/components/Toast";
 import { getSavedLanguage, setSavedLanguage, translations, Language } from "@/lib/i18n";
 
@@ -24,8 +28,9 @@ export default function SettingsPage() {
   const { showToast } = useToast();
 
   const [user, setUser] = useState<Profile | null>(null);
-  const [activeSection, setActiveSection] = useState<"profile" | "social" | "security" | "language">("profile");
+  const [activeSection, setActiveSection] = useState<"profile" | "social" | "security" | "language" | "appearance">("profile");
   const [lang, setLang] = useState<Language>("tr");
+  const [isDark, setIsDark] = useState(false);
 
   // FORM FIELDS
   const [fullName, setFullName] = useState("");
@@ -62,6 +67,39 @@ export default function SettingsPage() {
 
   const t = translations[lang] || translations.tr;
 
+  useEffect(() => {
+    const isDarkMode = typeof document !== "undefined" && (
+      document.documentElement.classList.contains("dark") || 
+      localStorage.getItem("deloop_theme") === "dark"
+    );
+    setIsDark(isDarkMode);
+
+    const onTheme = () => {
+      setIsDark(document.documentElement.classList.contains("dark"));
+    };
+    window.addEventListener("deloop_theme_changed", onTheme);
+    return () => window.removeEventListener("deloop_theme_changed", onTheme);
+  }, []);
+
+  const handleThemeChange = (dark: boolean) => {
+    setIsDark(dark);
+    if (dark) {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("deloop_theme", "dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("deloop_theme", "light");
+    }
+    window.dispatchEvent(new Event("deloop_theme_changed"));
+    showToast(
+      dark
+        ? (lang === "tr" ? "Karanlık Mod Aktif" : "Qaranlıq Rejim Aktiv")
+        : (lang === "tr" ? "Aydınlık Mod Aktif" : "İşıqlı Rejim Aktiv"),
+      undefined,
+      "info"
+    );
+  };
+
   const handleLanguageChange = (newLang: Language) => {
     setLang(newLang);
     setSavedLanguage(newLang);
@@ -72,7 +110,7 @@ export default function SettingsPage() {
     );
   };
 
-  const handleSaveProfile = (e: React.FormEvent) => {
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
 
@@ -81,7 +119,7 @@ export default function SettingsPage() {
       .map((s) => s.trim())
       .filter((s) => s.length > 0);
 
-    const updated = localStore.updateProfile(user.username, {
+    const updatePayload = {
       full_name: fullName.trim(),
       developer_title: developerTitle,
       bio: bio.trim(),
@@ -90,12 +128,24 @@ export default function SettingsPage() {
       github_username: githubUsername.trim(),
       website: website.trim(),
       linkedin_url: linkedinUrl.trim(),
-    });
+    };
 
-    if (updated) {
-      setUser(updated);
-      showToast(t.settings.savedToast, undefined, "success");
+    try {
+      const updated = await dbUpdateProfile(user.id, updatePayload);
+      if (updated) {
+        setUser(updated);
+        localStore.setCurrentUser(updated);
+      }
+    } catch {
+      // Fallback
+      const updated = localStore.updateProfile(user.username, updatePayload);
+      if (updated) {
+        setUser(updated);
+      }
     }
+
+    localStore.updateProfile(user.username, updatePayload);
+    showToast(t.settings.savedToast, undefined, "success");
   };
 
   const handlePasswordUpdate = (e: React.FormEvent) => {
@@ -172,6 +222,18 @@ export default function SettingsPage() {
         >
           <Lock className="w-4 h-4" />
           <span>{t.settings.tabSecurity}</span>
+        </button>
+
+        <button
+          onClick={() => setActiveSection("appearance")}
+          className={`px-3.5 py-2 rounded-lg flex items-center gap-2 transition-colors shrink-0 ${
+            activeSection === "appearance"
+              ? "bg-neutral-800 text-white font-semibold"
+              : "text-neutral-400 hover:text-neutral-200 hover:bg-neutral-900"
+          }`}
+        >
+          <Palette className="w-4 h-4" />
+          <span>{lang === "tr" ? "Görünüm & Logo" : "Görünüş & Loqo"}</span>
         </button>
       </div>
 
@@ -424,6 +486,161 @@ export default function SettingsPage() {
             </button>
           </div>
         </form>
+      )}
+
+      {/* TAB CONTENT: APPEARANCE & BRAND LOGOS */}
+      {activeSection === "appearance" && (
+        <div className="space-y-6 rounded-2xl bg-neutral-900/40 border border-neutral-800 p-5 sm:p-6">
+          <div className="border-b border-neutral-800 pb-3">
+            <h3 className="font-semibold text-white text-sm">
+              {lang === "tr" ? "Görünüm ve Marka Logoları" : "Görünüş və Brend Loqoları"}
+            </h3>
+            <p className="text-xs text-neutral-400 mt-0.5">
+              {lang === "tr"
+                ? "Platform temasını seçin ve resmi Deloop marka logolarını inceleyin."
+                : "Platforma rejimini seçin və rəsmi Deloop brend loqolarına baxın."}
+            </p>
+          </div>
+
+          {/* THEME SELECTOR */}
+          <div className="space-y-3">
+            <label className="block text-xs font-semibold text-neutral-300 font-mono uppercase tracking-wider">
+              {lang === "tr" ? "Tema Tercihi" : "Rejim Seçimi"}
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg">
+              <button
+                type="button"
+                onClick={() => handleThemeChange(false)}
+                className={`p-4 rounded-xl border flex items-center gap-3.5 transition-all text-left ${
+                  !isDark
+                    ? "bg-white text-gray-900 border-blue-500 ring-2 ring-blue-500/30 shadow-md"
+                    : "bg-neutral-900/80 text-neutral-300 border-neutral-800 hover:border-neutral-700"
+                }`}
+              >
+                <div className="w-9 h-9 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
+                  <Sun className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="font-bold text-xs">
+                    {lang === "tr" ? "Aydınlık Mod (Light)" : "Açıq Rejim (Light)"}
+                  </div>
+                  <div className="text-[11px] opacity-75">
+                    {lang === "tr" ? "Açık arayüz ve 1. logo" : "İşıqlı interfeys və 1-ci loqo"}
+                  </div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleThemeChange(true)}
+                className={`p-4 rounded-xl border flex items-center gap-3.5 transition-all text-left ${
+                  isDark
+                    ? "bg-neutral-950 text-white border-blue-500 ring-2 ring-blue-500/30 shadow-md"
+                    : "bg-neutral-900/80 text-neutral-300 border-neutral-800 hover:border-neutral-700"
+                }`}
+              >
+                <div className="w-9 h-9 rounded-lg bg-blue-950/80 text-blue-400 flex items-center justify-center shrink-0">
+                  <Moon className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="font-bold text-xs">
+                    {lang === "tr" ? "Karanlık Mod (Dark)" : "Tünd Rejim (Dark)"}
+                  </div>
+                  <div className="text-[11px] opacity-75">
+                    {lang === "tr" ? "Karanlık tema ve 2. logo" : "Qaranlıq rejim və 2-ci loqo"}
+                  </div>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          {/* OFFICIAL LOGO ASSETS SHOWCASE */}
+          <div className="pt-4 border-t border-neutral-800 space-y-4">
+            <div>
+              <h4 className="text-xs font-semibold text-neutral-200 font-mono uppercase tracking-wider">
+                {lang === "tr" ? "Deloop Resmi Varlıklar" : "Deloop Rəsmi Brend Loqoları"}
+              </h4>
+              <p className="text-[11px] text-neutral-400 mt-0.5">
+                {lang === "tr"
+                  ? "Tüm platformda kullanılan 3 özel logo tasarımı:"
+                  : "Platformada istifadə olunan 3 xüsusi loqo dizaynı:"}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {/* 1. LIGHT MODE LOGO */}
+              <div className="p-4 rounded-xl bg-white border border-gray-200 flex flex-col items-center text-center space-y-3">
+                <div className="w-24 h-24 flex items-center justify-center">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/logo-light.png"
+                    alt="Light Mode Logo"
+                    className="max-w-full max-h-full object-contain"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700 font-mono">
+                    1. Light Mode
+                  </span>
+                  <div className="font-bold text-gray-900 text-xs">
+                    {lang === "tr" ? "Aydınlık Tema Logosu" : "Açıq Rejim Loqosu"}
+                  </div>
+                  <p className="text-[10px] text-gray-500 leading-tight">
+                    {lang === "tr" ? "Açık arayüzler için ana logo" : "Açıq interfeyslər üçün əsas loqo"}
+                  </p>
+                </div>
+              </div>
+
+              {/* 2. DARK MODE LOGO */}
+              <div className="p-4 rounded-xl bg-[#090d16] border border-gray-800 flex flex-col items-center text-center space-y-3">
+                <div className="w-24 h-24 flex items-center justify-center">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/logo-dark.png"
+                    alt="Dark Mode Logo"
+                    className="max-w-full max-h-full object-contain"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-neutral-800 text-neutral-300 font-mono">
+                    2. Dark Mode
+                  </span>
+                  <div className="font-bold text-white text-xs">
+                    {lang === "tr" ? "Karanlık Tema Logosu" : "Tünd Rejim Loqosu"}
+                  </div>
+                  <p className="text-[10px] text-neutral-400 leading-tight">
+                    {lang === "tr" ? "Karanlık arayüz için metalik logo" : "Tünd rejim üçün metalik loqo"}
+                  </p>
+                </div>
+              </div>
+
+              {/* 3. APP LOGO & CHROME TAB FAVICON */}
+              <div className="p-4 rounded-xl bg-neutral-900/60 border border-neutral-800 flex flex-col items-center text-center space-y-3">
+                <div className="w-24 h-24 rounded-2xl overflow-hidden shadow-lg border border-neutral-700 flex items-center justify-center bg-neutral-950">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/app-logo.png"
+                    alt="App Logo and Favicon"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-800 font-mono">
+                    3. App & Favicon
+                  </span>
+                  <div className="font-bold text-white text-xs">
+                    {lang === "tr" ? "App Logosu & Chrome İkonu" : "App Loqosu & Chrome İkonu"}
+                  </div>
+                  <p className="text-[10px] text-neutral-400 leading-tight">
+                    {lang === "tr"
+                      ? "Uygulama logosu ve tarayıcı sekme simgesi"
+                      : "Tətbiq loqosu və Chrome tabında sayt adının yanındakı ikon"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
     </div>

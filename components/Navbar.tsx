@@ -1,47 +1,116 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  Home,
+  Menu,
+  X,
   Search,
-  PlusSquare,
-  Heart,
+  Plus,
+  Bell,
+  Send,
   User as UserIcon,
   LogOut,
-  Send,
-  Compass,
+  Settings,
+  LayoutDashboard,
+  ShieldCheck,
+  Globe,
+  ChevronDown,
+  Terminal,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { localStore } from "@/lib/supabase/store";
+import { dbSignOut } from "@/lib/supabase/db";
 import { Profile } from "@/types";
-import { getSavedLanguage, translations, Language } from "@/lib/i18n";
+import { getSavedLanguage, setSavedLanguage, translations, Language } from "@/lib/i18n";
+import { DeloopLogo } from "@/components/DeloopLogo";
 
-export function Navbar() {
+interface NavbarProps {
+  onToggleMobileSidebar?: () => void;
+  isMobileSidebarOpen?: boolean;
+}
+
+export function Navbar({ onToggleMobileSidebar, isMobileSidebarOpen }: NavbarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [user, setUser] = useState<Profile | null>(null);
-  const [unread, setUnread] = useState(0);
+  const [unreadNotifs, setUnreadNotifs] = useState(0);
+  const [unreadMessages, setUnreadMessages] = useState(0);
   const [lang, setLang] = useState<Language>("tr");
   const [searchVal, setSearchVal] = useState("");
+  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [langDropdownOpen, setLangDropdownOpen] = useState(false);
+  const [isDark, setIsDark] = useState(false);
+
+  const userDropdownRef = useRef<HTMLDivElement>(null);
+  const langDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const isDarkMode = typeof document !== "undefined" && (
+      document.documentElement.classList.contains("dark") || 
+      localStorage.getItem("deloop_theme") === "dark"
+    );
+    setIsDark(isDarkMode);
+    if (isDarkMode) {
+      document.documentElement.classList.add("dark");
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    const nextDark = !isDark;
+    setIsDark(nextDark);
+    if (nextDark) {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("deloop_theme", "dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("deloop_theme", "light");
+    }
+    window.dispatchEvent(new Event("deloop_theme_changed"));
+  };
 
   useEffect(() => {
     const curr = localStore.getCurrentUser();
     setUser(curr);
-    const notifs = localStore.getNotifications();
-    setUnread(notifs.filter((n) => !n.is_read).length);
-    setLang(getSavedLanguage());
 
+    const notifs = localStore.getNotifications();
+    setUnreadNotifs(notifs.filter((n) => !n.is_read).length);
+
+    const msgs = localStore.getMessages();
+    if (curr) {
+      setUnreadMessages(msgs.filter((m) => m.receiver_id === curr.id && !m.is_read).length);
+    }
+
+    setLang(getSavedLanguage());
     const handleLangChange = () => setLang(getSavedLanguage());
     window.addEventListener("deloop_lang_changed", handleLangChange);
     return () => window.removeEventListener("deloop_lang_changed", handleLangChange);
   }, [pathname]);
 
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (userDropdownRef.current && !userDropdownRef.current.contains(e.target as Node)) {
+        setUserDropdownOpen(false);
+      }
+      if (langDropdownRef.current && !langDropdownRef.current.contains(e.target as Node)) {
+        setLangDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   const t = translations[lang] || translations.tr;
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await dbSignOut();
+    } catch (e) { /* ignore */ }
     localStore.logout();
     setUser(null);
+    setUserDropdownOpen(false);
     router.push("/login");
   };
 
@@ -49,220 +118,224 @@ export function Navbar() {
     e.preventDefault();
     if (searchVal.trim()) {
       router.push(`/developers?search=${encodeURIComponent(searchVal.trim())}`);
+      setSearchVal("");
     }
   };
 
-  // Mobile bottom nav items
-  const mobileNavItems = [
-    { href: "/projects", icon: Home, label: t.nav.home },
-    { href: "/developers", icon: Compass, label: t.nav.explore },
-    { href: "/projects/new", icon: PlusSquare, label: t.nav.newPost },
-    { href: "/notifications", icon: Heart, label: t.nav.notifications, badge: unread },
-    {
-      href: user ? `/developers/${user.username}` : "/login",
-      icon: UserIcon,
-      label: t.nav.profile,
-      isAvatar: true,
-    },
-  ];
+  const handleLanguageSelect = (newLang: Language) => {
+    setSavedLanguage(newLang);
+    setLang(newLang);
+    setLangDropdownOpen(false);
+  };
 
   return (
-    <>
-      {/* ==========================================
-          TOP HEADER — Seamless with body background
-          ========================================== */}
-      <header
-        className="fixed top-0 left-0 right-0 z-50 transition-colors"
-        style={{
-          backgroundColor: "var(--bg-main)",
-          borderBottom: "1px solid var(--border-color)",
-          height: "60px",
-        }}
-      >
-        <div
-          className="h-full flex items-center justify-between px-4"
-          style={{ maxWidth: "935px", margin: "0 auto" }}
-        >
-          {/* LOGO WITH THIN WHITE "Deloop" TEXT */}
-          <Link
-            href="/projects"
-            className="flex items-center gap-2.5 no-underline group"
-            style={{ textDecoration: "none" }}
+    <header className="fixed top-0 left-0 right-0 z-40 h-16 bg-white dark:bg-[#0b0f17] border-b border-gray-200 dark:border-gray-800 shadow-sm transition-colors">
+      <div className="h-full max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between gap-3">
+
+        {/* LEFT: MOBILE TOGGLE & BRAND */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={onToggleMobileSidebar}
+            className="lg:hidden p-2 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100 border border-gray-200 dark:border-gray-800 transition-colors"
+            aria-label="Toggle menu"
           >
-            {/* Minimalist Logo Badge */}
-            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-neutral-900 border border-neutral-700/80 text-white text-sm font-semibold tracking-tight shadow-sm group-hover:border-neutral-500 transition-colors">
-              <span className="font-mono text-blue-400">D</span>
+            {isMobileSidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
+
+          <Link href="/projects" className="flex items-center gap-2.5 no-underline group select-none">
+            <DeloopLogo variant="app" size="md" />
+            <div className="flex items-baseline gap-1.5">
+              <span className="font-extrabold text-lg tracking-tight text-gray-900 dark:text-white group-hover:text-blue-600 transition-colors">
+                Deloop
+              </span>
+              <span className="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 hidden sm:inline-block">
+                DEV
+              </span>
             </div>
-            {/* Nazik ağ şriftlə "Deloop" */}
-            <span className="font-light text-white text-xl tracking-wider hidden sm:block">
-              Deloop
-            </span>
+          </Link>
+        </div>
+
+        {/* CENTER: SEARCH */}
+        <div className="hidden md:flex flex-1 max-w-md mx-4">
+          <form onSubmit={handleSearchSubmit} className="relative w-full">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+            <input
+              type="text"
+              placeholder={t.nav.searchPlaceholder || "Layihə və ya developer axtar..."}
+              value={searchVal}
+              onChange={(e) => setSearchVal(e.target.value)}
+              className="w-full h-10 pl-10 pr-4 rounded-lg text-sm bg-gray-100 border border-gray-200 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all"
+            />
+          </form>
+        </div>
+
+        {/* RIGHT: ACTIONS */}
+        <div className="flex items-center gap-2 sm:gap-2.5">
+
+          {/* NEW PROJECT BUTTON */}
+          <Link
+            href="/projects/new"
+            className="hidden sm:inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 shadow-sm transition-all"
+          >
+            <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+            <span>{lang === "az" ? "Yeni Layihə" : lang === "en" ? "New Project" : "Yeni Proje"}</span>
           </Link>
 
-          {/* DESKTOP CENTER — Clean, refined search bar */}
-          <div className="hidden md:flex flex-1 max-w-xs mx-6">
-            <form onSubmit={handleSearchSubmit} className="relative w-full">
-              <Search
-                className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
-                style={{ color: "var(--text-muted)" }}
-              />
-              <input
-                type="text"
-                placeholder={t.nav.searchPlaceholder}
-                value={searchVal}
-                onChange={(e) => setSearchVal(e.target.value)}
-                className="w-full py-2 pl-10 pr-4 rounded-xl text-xs sm:text-sm outline-none transition-all placeholder:text-neutral-500"
-                style={{
-                  backgroundColor: "var(--bg-subtle)",
-                  color: "var(--text-main)",
-                  border: "1px solid var(--border-color)",
-                }}
-              />
-            </form>
+          {/* MESSAGES */}
+          <Link
+            href="/messages"
+            title={t.nav.messages}
+            className={`relative p-2.5 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-all ${
+              pathname.startsWith("/messages") ? "bg-blue-50 text-blue-600" : ""
+            }`}
+          >
+            <Send className="w-4.5 h-4.5" />
+            {unreadMessages > 0 && (
+              <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-bold flex items-center justify-center">
+                {unreadMessages}
+              </span>
+            )}
+          </Link>
+
+          {/* NOTIFICATIONS */}
+          <Link
+            href="/notifications"
+            title={t.nav.notifications}
+            className={`relative p-2.5 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-all ${
+              pathname.startsWith("/notifications") ? "bg-blue-50 text-blue-600" : ""
+            }`}
+          >
+            <Bell className="w-4.5 h-4.5" />
+            {unreadNotifs > 0 && (
+              <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center">
+                {unreadNotifs}
+              </span>
+            )}
+          </Link>
+
+          {/* THEME TOGGLE (LIGHT / DARK) */}
+          <button
+            onClick={toggleTheme}
+            className="p-2 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-amber-300 dark:hover:bg-gray-800 border border-gray-200 dark:border-gray-800 transition-colors"
+            title={isDark ? "Açıq Rejim (Light Mode)" : "Tünd Rejim (Dark Mode)"}
+            aria-label="Toggle theme"
+          >
+            {isDark ? (
+              <Sun className="w-4 h-4 text-amber-400" />
+            ) : (
+              <Moon className="w-4 h-4 text-slate-600" />
+            )}
+          </button>
+
+          {/* LANGUAGE */}
+          <div className="relative" ref={langDropdownRef}>
+            <button
+              onClick={() => setLangDropdownOpen(!langDropdownOpen)}
+              className="flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 border border-gray-200 transition-colors"
+              title="Change Language"
+            >
+              <Globe className="w-3.5 h-3.5" />
+              <span className="uppercase">{lang}</span>
+              <ChevronDown className="w-3 h-3 text-gray-400" />
+            </button>
+
+            {langDropdownOpen && (
+              <div className="absolute right-0 mt-1.5 w-36 bg-white border border-gray-200 rounded-lg shadow-lg p-1 z-50 text-xs">
+                {[
+                  { code: "az", label: "Azərbaycan" },
+                  { code: "tr", label: "Türkçe" },
+                  { code: "en", label: "English" },
+                ].map((item) => (
+                  <button
+                    key={item.code}
+                    onClick={() => handleLanguageSelect(item.code as Language)}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-md transition-colors text-left ${
+                      lang === item.code
+                        ? "bg-blue-50 text-blue-600 font-semibold"
+                        : "text-gray-700 hover:bg-gray-50"
+                    }`}
+                  >
+                    <span>{item.label}</span>
+                    <span className="font-mono text-[10px] uppercase text-gray-400">{item.code}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* DESKTOP RIGHT — Nav Icons */}
-          <nav className="hidden md:flex items-center gap-1">
-            {[
-              { href: "/projects", icon: Home, label: t.nav.home },
-              { href: "/developers", icon: Compass, label: t.nav.explore },
-              { href: "/projects/new", icon: PlusSquare, label: t.nav.newPost },
-              { href: "/notifications", icon: Heart, label: t.nav.notifications, badge: unread },
-              { href: "/messages", icon: Send, label: t.nav.messages },
-            ].map(({ href, icon: Icon, label, badge }) => {
-              const isActive = pathname === href || (href !== "/projects" && pathname.startsWith(href));
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  title={label}
-                  className="relative p-2.5 rounded-lg transition-colors hover:opacity-80"
-                  style={{
-                    color: isActive ? "var(--text-main)" : "var(--text-muted)",
-                  }}
-                >
-                  <Icon
-                    className="w-6 h-6"
-                    fill={isActive ? "var(--text-main)" : "none"}
-                    strokeWidth={isActive ? 2.3 : 1.6}
-                  />
-                  {badge && badge > 0 ? (
-                    <span
-                      className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full text-white text-[10px] font-bold flex items-center justify-center shadow-sm"
-                      style={{ backgroundColor: "#ed4956" }}
-                    >
-                      {badge}
-                    </span>
-                  ) : null}
-                </Link>
-              );
-            })}
-
-            {/* USER AVATAR or LOGIN */}
-            {user ? (
-              <div className="flex items-center gap-1.5 ml-1.5">
-                <Link href={`/developers/${user.username}`} className="p-1" title={t.nav.profile}>
-                  <img
-                    src={user.avatar_url || `https://ui-avatars.com/api/?name=${user.full_name}&background=random&size=80`}
-                    alt={user.full_name}
-                    className="w-7 h-7 rounded-full object-cover transition-all"
-                    style={{
-                      border: pathname.includes(user.username) ? "2px solid var(--text-main)" : "1px solid var(--border-color)",
-                    }}
-                  />
-                </Link>
-                <button
-                  onClick={handleLogout}
-                  className="p-2 rounded-lg transition-all hidden lg:block hover:opacity-80"
-                  style={{ color: "var(--text-muted)" }}
-                  title={t.nav.logout}
-                >
-                  <LogOut className="w-5 h-5" />
-                </button>
-              </div>
-            ) : (
-              <Link
-                href="/login"
-                className="ml-2 px-4 py-1.5 rounded-lg text-xs font-semibold text-white transition-all bg-blue-600 hover:bg-blue-500 shadow-sm"
+          {/* USER */}
+          {user ? (
+            <div className="relative" ref={userDropdownRef}>
+              <button
+                onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+                className="flex items-center gap-2 p-1 rounded-lg hover:bg-gray-100 border border-transparent hover:border-gray-200 transition-all"
               >
-                {t.nav.login}
-              </Link>
-            )}
-          </nav>
-
-          {/* MOBILE RIGHT — DM icon + Avatar */}
-          <div className="flex md:hidden items-center gap-2">
-            <Link href="/messages" className="p-1.5" style={{ color: "var(--text-main)" }}>
-              <Send className="w-6 h-6" />
-            </Link>
-            {user && (
-              <Link href={`/developers/${user.username}`} className="p-1">
                 <img
                   src={user.avatar_url || `https://ui-avatars.com/api/?name=${user.full_name}&background=random&size=80`}
                   alt={user.full_name}
-                  className="w-7 h-7 rounded-full object-cover"
-                  style={{ border: "1px solid var(--border-color)" }}
+                  className="w-8 h-8 rounded-full object-cover ring-2 ring-gray-200"
                 />
-              </Link>
-            )}
-          </div>
-        </div>
-      </header>
+                <ChevronDown className="w-3.5 h-3.5 text-gray-400 hidden sm:block" />
+              </button>
 
-      {/* ==========================================
-          BOTTOM NAV — Mobile
-          ========================================== */}
-      <nav
-        className="md:hidden fixed bottom-0 left-0 right-0 z-50 transition-colors"
-        style={{
-          backgroundColor: "var(--bg-main)",
-          borderTop: "1px solid var(--border-color)",
-          height: "49px",
-          paddingBottom: "env(safe-area-inset-bottom, 0px)",
-        }}
-      >
-        <div className="h-full flex items-center justify-around px-2">
-          {mobileNavItems.map(({ href, icon: Icon, label, badge, isAvatar }) => {
-            const isActive =
-              pathname === href ||
-              (href !== "/projects" && href.length > 1 && pathname.startsWith(href));
-            return (
-              <Link
-                key={href}
-                href={href}
-                title={label}
-                className="relative flex items-center justify-center w-12 h-full"
-                style={{ color: isActive ? "var(--text-main)" : "var(--text-muted)" }}
-              >
-                {isAvatar && user ? (
-                  <img
-                    src={user.avatar_url || `https://ui-avatars.com/api/?name=${user.full_name}&background=random&size=80`}
-                    alt={label}
-                    className="w-[26px] h-[26px] rounded-full object-cover"
-                    style={{
-                      border: isActive ? "2px solid var(--text-main)" : "1px solid var(--border-color)",
-                    }}
-                  />
-                ) : (
-                  <Icon
-                    className="w-[26px] h-[26px]"
-                    fill={isActive ? "var(--text-main)" : "none"}
-                    strokeWidth={isActive ? 2.3 : 1.6}
-                  />
-                )}
-                {badge && badge > 0 ? (
-                  <span
-                    className="absolute top-2 right-1 w-4 h-4 rounded-full text-white text-[9px] font-bold flex items-center justify-center"
-                    style={{ backgroundColor: "#ed4956" }}
-                  >
-                    {badge > 9 ? "9+" : badge}
-                  </span>
-                ) : null}
-              </Link>
-            );
-          })}
+              {userDropdownOpen && (
+                <div className="absolute right-0 mt-1.5 w-56 bg-white border border-gray-200 rounded-xl shadow-lg p-2 z-50">
+                  <div className="px-3 py-2.5 border-b border-gray-100 mb-1">
+                    <p className="text-xs font-semibold text-gray-900 truncate">{user.full_name}</p>
+                    <p className="text-[11px] font-mono text-gray-500 truncate">@{user.username}</p>
+                    {user.role === "admin" && (
+                      <span className="inline-block mt-1 text-[9px] font-semibold uppercase px-2 py-0.5 rounded bg-amber-50 text-amber-600 border border-amber-200">
+                        Admin
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="space-y-0.5 text-xs">
+                    <Link href={`/developers/${user.username}`} onClick={() => setUserDropdownOpen(false)}
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
+                      <UserIcon className="w-4 h-4 text-gray-400" />
+                      <span>{t.nav.profile}</span>
+                    </Link>
+
+                    <Link href="/dashboard" onClick={() => setUserDropdownOpen(false)}
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
+                      <LayoutDashboard className="w-4 h-4 text-gray-400" />
+                      <span>Dashboard</span>
+                    </Link>
+
+                    {user.role === "admin" && (
+                      <Link href="/admin" onClick={() => setUserDropdownOpen(false)}
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-amber-600 hover:bg-amber-50 transition-colors">
+                        <ShieldCheck className="w-4 h-4 text-amber-500" />
+                        <span>Admin Console</span>
+                      </Link>
+                    )}
+
+                    <Link href="/settings" onClick={() => setUserDropdownOpen(false)}
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
+                      <Settings className="w-4 h-4 text-gray-400" />
+                      <span>{t.nav.settings}</span>
+                    </Link>
+                  </div>
+
+                  <div className="pt-1 mt-1 border-t border-gray-100">
+                    <button onClick={handleLogout}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-rose-600 hover:bg-rose-50 transition-colors text-left">
+                      <LogOut className="w-4 h-4" />
+                      <span>{t.nav.logout}</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <Link href="/login"
+              className="px-4 py-2 rounded-lg text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 shadow-sm transition-all">
+              {t.nav.login}
+            </Link>
+          )}
         </div>
-      </nav>
-    </>
+      </div>
+    </header>
   );
 }

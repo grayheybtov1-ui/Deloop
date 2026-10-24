@@ -12,6 +12,7 @@ import {
   ExternalLink
 } from "lucide-react";
 import { localStore } from "@/lib/supabase/store";
+import { dbGetAllProfiles, dbGetMessagesBetween, dbSendMessage } from "@/lib/supabase/db";
 import { Profile, Message } from "@/types";
 import { useToast } from "@/components/Toast";
 import { timeAgo } from "@/lib/utils";
@@ -37,19 +38,25 @@ function MessagesContent() {
     const curr = localStore.getCurrentUser();
     setCurrentUser(curr);
 
-    const allProfiles = localStore.getProfiles().filter((p) => p.id !== curr?.id);
-    setProfiles(allProfiles);
-
-    if (targetUserId) {
-      const target = allProfiles.find((p) => p.id === targetUserId);
-      if (target) {
-        setSelectedUser(target);
-      } else if (allProfiles.length > 0) {
-        setSelectedUser(allProfiles[0]);
+    async function loadData() {
+      try {
+        const pool = await dbGetAllProfiles();
+        const validProfiles = (pool.length > 0 ? pool : localStore.getProfiles()).filter((p) => p.id !== curr?.id);
+        setProfiles(validProfiles);
+        if (targetUserId) {
+          const target = validProfiles.find((p) => p.id === targetUserId);
+          if (target) setSelectedUser(target);
+          else if (validProfiles.length > 0) setSelectedUser(validProfiles[0]);
+        } else if (validProfiles.length > 0) {
+          setSelectedUser(validProfiles[0]);
+        }
+      } catch {
+        const allProfiles = localStore.getProfiles().filter((p) => p.id !== curr?.id);
+        setProfiles(allProfiles);
+        if (allProfiles.length > 0) setSelectedUser(allProfiles[0]);
       }
-    } else if (allProfiles.length > 0) {
-      setSelectedUser(allProfiles[0]);
     }
+    loadData();
 
     const handleLang = () => setLang(getSavedLanguage());
     window.addEventListener("deloop_lang_changed", handleLang);
@@ -58,8 +65,18 @@ function MessagesContent() {
 
   useEffect(() => {
     if (currentUser && selectedUser) {
-      const chatHistory = localStore.getMessagesBetween(currentUser.id, selectedUser.id);
-      setMessages(chatHistory);
+      const u1 = currentUser.id;
+      const u2 = selectedUser.id;
+      async function fetchChat() {
+        try {
+          const chatHistory = await dbGetMessagesBetween(u2);
+          setMessages(chatHistory.length > 0 ? chatHistory : localStore.getMessagesBetween(u1, u2));
+        } catch {
+          const chatHistory = localStore.getMessagesBetween(u1, u2);
+          setMessages(chatHistory);
+        }
+      }
+      fetchChat();
     }
   }, [currentUser, selectedUser]);
 
@@ -69,13 +86,21 @@ function MessagesContent() {
 
   const t = translations[lang] || translations.tr;
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessageText.trim() || !currentUser || !selectedUser) return;
 
-    const sent = localStore.sendMessage(selectedUser.id, newMessageText.trim());
-    setMessages((prev) => [...prev, sent]);
+    const content = newMessageText.trim();
     setNewMessageText("");
+
+    try {
+      const sent = await dbSendMessage(selectedUser.id, content);
+      setMessages((prev) => [...prev, sent]);
+      localStore.sendMessage(selectedUser.id, content);
+    } catch {
+      const sent = localStore.sendMessage(selectedUser.id, content);
+      setMessages((prev) => [...prev, sent]);
+    }
 
     showToast(lang === "tr" ? "Mesaj Gönderildi" : "Mesaj Göndərildi", undefined, "success");
   };

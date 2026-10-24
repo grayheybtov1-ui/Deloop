@@ -5,41 +5,37 @@
 @tailwind utilities;
 
 /* ===========================
-   LIGHT MODE (DEFAULT)
-   Header & Body share the exact same background
+   DESIGN SYSTEM — LIGHT THEME
+   Clean, Professional, Stable
    =========================== */
 :root {
-  --bg-main: #ffffff;
+  --bg-main: #f5f7fa;
   --bg-card: #ffffff;
-  --bg-subtle: #f4f4f5;
-  --border-color: #e4e4e7;
-  --border-hover: #d4d4d8;
-  --text-main: #09090b;
-  --text-muted: #71717a;
-  --color-accent: #0095f6;
-  --color-accent-hover: #1877f2;
-  --nav-bg: #ffffff;
-  --nav-border: #e4e4e7;
+  --bg-subtle: #eef1f6;
+  --border-color: #e2e6ed;
+  --border-hover: #c8cfd9;
+  --text-main: #111827;
+  --text-muted: #6b7280;
+  --color-accent: #2563eb;
+  --color-accent-hover: #1d4ed8;
+  --nav-bg: rgba(255, 255, 255, 0.92);
+  --nav-border: #e2e6ed;
+  --sidebar-bg: rgba(255, 255, 255, 0.95);
 }
 
-/* ===========================
-   DARK MODE
-   Header & Body share the exact same background (#000000)
-   =========================== */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg-main: #000000;
-    --bg-card: #000000;
-    --bg-subtle: #141416;
-    --border-color: #202024;
-    --border-hover: #2e2e34;
-    --text-main: #f4f4f5;
-    --text-muted: #94949e;
-    --color-accent: #0095f6;
-    --color-accent-hover: #1877f2;
-    --nav-bg: #000000;
-    --nav-border: #1a1a1e;
-  }
+.dark {
+  --bg-main: #0b0f17;
+  --bg-card: #121824;
+  --bg-subtle: #1a2233;
+  --border-color: #1f293d;
+  --border-hover: #2e3d5b;
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --color-accent: #3b82f6;
+  --color-accent-hover: #2563eb;
+  --nav-bg: rgba(11, 15, 23, 0.92);
+  --nav-border: #1f293d;
+  --sidebar-bg: rgba(11, 15, 23, 0.95);
 }
 
 /* ===========================
@@ -101,6 +97,6 @@ button:active, a:active {
    SELECTION
    =========================== */
 ::selection {
-  background: #0095f6;
+  background: #2563eb;
   color: #ffffff;
 }

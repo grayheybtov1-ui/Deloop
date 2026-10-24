@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { FolderGit2, Image, Link as LinkIcon, Code2, CheckCircle2, AlertCircle } from "lucide-react";
 import { Project, ProjectStatus } from "@/types";
 import { localStore } from "@/lib/supabase/store";
+import { dbCreateProject, dbUpdateProject } from "@/lib/supabase/db";
 import { useToast } from "./Toast";
 import { getSavedLanguage, Language } from "@/lib/i18n";
 
@@ -39,7 +40,7 @@ export function ProjectForm({ initialData, isEditing = false }: ProjectFormProps
     return Object.keys(errs).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
 
@@ -62,14 +63,31 @@ export function ProjectForm({ initialData, isEditing = false }: ProjectFormProps
       user_id: initialData?.user_id || localStore.getCurrentUser()?.id || "user-1",
     };
 
-    if (isEditing && initialData) {
-      localStore.updateProject(initialData.id, payload);
-      showToast(lang === "tr" ? "Proje Güncellendi" : "Layihə Yeniləndi", `"${title}"`, "success");
-      router.push(`/projects/${initialData.id}`);
-    } else {
-      const created = localStore.createProject(payload);
-      showToast(lang === "tr" ? "Proje Paylaşıldı" : "Layihə Paylaşıldı", `"${title}"`, "success");
-      router.push(`/projects/${created.id}`);
+    try {
+      if (isEditing && initialData) {
+        await dbUpdateProject(initialData.id, payload);
+        localStore.updateProject(initialData.id, payload);
+        showToast(lang === "tr" ? "Proje Güncellendi" : "Layihə Yeniləndi", `"${title}"`, "success");
+        router.push(`/projects/${initialData.id}`);
+      } else {
+        const created = await dbCreateProject(payload);
+        localStore.createProject(payload);
+        showToast(lang === "tr" ? "Proje Paylaşıldı" : "Layihə Paylaşıldı", `"${title}"`, "success");
+        router.push(`/projects/${created.id}`);
+      }
+    } catch {
+      // Fallback to localStore
+      if (isEditing && initialData) {
+        localStore.updateProject(initialData.id, payload);
+        showToast(lang === "tr" ? "Proje Güncellendi" : "Layihə Yeniləndi", `"${title}"`, "success");
+        router.push(`/projects/${initialData.id}`);
+      } else {
+        const created = localStore.createProject(payload);
+        showToast(lang === "tr" ? "Proje Paylaşıldı" : "Layihə Paylaşıldı", `"${title}"`, "success");
+        router.push(`/projects/${created.id}`);
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 

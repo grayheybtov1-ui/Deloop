@@ -1,21 +1,34 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Search, Filter, Users, Terminal } from "lucide-react";
 import { localStore } from "@/lib/supabase/store";
+import { dbGetAllProfiles } from "@/lib/supabase/db";
 import { DeveloperCard } from "@/components/DeveloperCard";
+import { Profile } from "@/types";
 import { getSavedLanguage, Language } from "@/lib/i18n";
 
 const SKILL_FILTERS = ["Tümü", "React", "Next.js", "TypeScript", "Node.js", "Python", "AI", "Go", "Tailwind CSS"];
 
 export default function DevelopersPage() {
+  const [profiles, setProfiles] = useState<Profile[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSkill, setSelectedSkill] = useState("Tümü");
   const lang: Language = getSavedLanguage();
 
-  const allProfiles = localStore.getProfiles();
+  useEffect(() => {
+    async function fetchProfiles() {
+      try {
+        const data = await dbGetAllProfiles();
+        setProfiles(data.length > 0 ? data : localStore.getProfiles());
+      } catch {
+        setProfiles(localStore.getProfiles());
+      }
+    }
+    fetchProfiles();
+  }, []);
 
-  const filteredProfiles = allProfiles.filter((p) => {
+  const filteredProfiles = profiles.filter((p) => {
     const q = searchQuery.toLowerCase().trim();
     const matchesSearch =
       !q ||

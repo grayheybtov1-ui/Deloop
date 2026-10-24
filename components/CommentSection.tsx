@@ -5,6 +5,7 @@ import Link from "next/link";
 import { MessageSquare, Send, User } from "lucide-react";
 import { Comment, Profile } from "@/types";
 import { localStore } from "@/lib/supabase/store";
+import { dbGetComments, dbAddComment } from "@/lib/supabase/db";
 import { useToast } from "./Toast";
 import { timeAgo } from "@/lib/utils";
 
@@ -19,19 +20,34 @@ export function CommentSection({ projectId }: CommentSectionProps) {
   const { showToast } = useToast();
 
   useEffect(() => {
-    setComments(localStore.getComments(projectId));
     setCurrentUser(localStore.getCurrentUser());
+    async function loadComments() {
+      try {
+        const data = await dbGetComments(projectId);
+        setComments(data);
+      } catch {
+        setComments(localStore.getComments(projectId));
+      }
+    }
+    loadComments();
   }, [projectId]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newComment.trim()) return;
-
-    const added = localStore.addComment(projectId, newComment.trim());
-    setComments((prev) => [...prev, added]);
+    const text = newComment.trim();
     setNewComment("");
 
-    showToast("Comment Added", "Your feedback was published to the project.", "success");
+    try {
+      const added = await dbAddComment(projectId, text);
+      setComments((prev) => [...prev, added]);
+      localStore.addComment(projectId, text);
+      showToast("Comment Added", "Your feedback was published to the project.", "success");
+    } catch {
+      const added = localStore.addComment(projectId, text);
+      setComments((prev) => [...prev, added]);
+      showToast("Comment Added", "Your feedback was published to the project.", "success");
+    }
   };
 
   return (

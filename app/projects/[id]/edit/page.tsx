@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ProjectForm } from "@/components/ProjectForm";
 import { Project } from "@/types";
 import { localStore } from "@/lib/supabase/store";
+import { dbGetProjectById } from "@/lib/supabase/db";
 
 export default function EditProjectPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
@@ -20,11 +21,21 @@ export default function EditProjectPage({ params }: { params: Promise<{ id: stri
       router.push("/login");
       return;
     }
-    const proj = localStore.getProjectById(id);
-    if (proj) {
-      setProject(proj);
+    async function loadProject() {
+      try {
+        const proj = await dbGetProjectById(id);
+        if (proj) {
+          setProject(proj);
+        } else {
+          setProject(localStore.getProjectById(id));
+        }
+      } catch {
+        setProject(localStore.getProjectById(id));
+      } finally {
+        setLoading(false);
+      }
     }
-    setLoading(false);
+    loadProject();
   }, [id, router]);
 
   if (loading) return null;

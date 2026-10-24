@@ -17,6 +17,7 @@ import {
 
 import { Profile, Project } from "@/types";
 import { localStore } from "@/lib/supabase/store";
+import { dbGetProfileByUsername, dbGetProjects, dbToggleFollow } from "@/lib/supabase/db";
 import { GitHubStatsCard } from "@/components/GitHubStatsCard";
 import { useToast } from "@/components/Toast";
 import { ProjectCard } from "@/components/ProjectCard";
@@ -34,17 +35,42 @@ export default function DeveloperProfilePage({ params }: { params: Promise<{ use
   const [isFollowing, setIsFollowing] = useState(false);
   const [activeTab, setActiveTab] = useState<"grid" | "feed" | "github">("grid");
   const [lang, setLang] = useState<Language>("tr");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setLang(getSavedLanguage());
-    const prof = localStore.getProfileByUsername(username);
-    if (prof) {
-      setProfile(prof);
-      setIsFollowing(!!prof.is_following);
-      const allProj = localStore.getProjects();
-      setProjects(allProj.filter((p) => p.user_id === prof.id || p.profile?.username === prof.username));
-    }
     setCurrentUser(localStore.getCurrentUser());
+
+    async function loadData() {
+      try {
+        const prof = await dbGetProfileByUsername(username);
+        if (prof) {
+          setProfile(prof);
+          setIsFollowing(!!prof.is_following);
+          const allProj = await dbGetProjects({ userId: prof.id });
+          setProjects(allProj);
+        } else {
+          const fallback = localStore.getProfileByUsername(username);
+          if (fallback) {
+            setProfile(fallback);
+            setIsFollowing(!!fallback.is_following);
+            const allProj = localStore.getProjects();
+            setProjects(allProj.filter((p) => p.user_id === fallback.id || p.profile?.username === fallback.username));
+          }
+        }
+      } catch {
+        const fallback = localStore.getProfileByUsername(username);
+        if (fallback) {
+          setProfile(fallback);
+          setIsFollowing(!!fallback.is_following);
+          const allProj = localStore.getProjects();
+          setProjects(allProj.filter((p) => p.user_id === fallback.id || p.profile?.username === fallback.username));
+        }
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
 
     const handleLang = () => setLang(getSavedLanguage());
     window.addEventListener("deloop_lang_changed", handleLang);
@@ -52,6 +78,22 @@ export default function DeveloperProfilePage({ params }: { params: Promise<{ use
   }, [username]);
 
   const t = translations[lang] || translations.tr;
+
+  if (loading) {
+    return (
+      <div className="max-w-4xl mx-auto py-8 space-y-6 animate-pulse">
+        <div className="flex items-center gap-6">
+          <div className="w-24 h-24 rounded-full bg-neutral-800" />
+          <div className="space-y-3 flex-1">
+            <div className="h-6 w-48 bg-neutral-800 rounded-lg" />
+            <div className="h-4 w-32 bg-neutral-800 rounded-lg" />
+            <div className="h-4 w-64 bg-neutral-800 rounded-lg" />
+          </div>
+        </div>
+        <div className="h-64 w-full bg-neutral-800/60 rounded-2xl" />
+      </div>
+    );
+  }
 
   if (!profile) {
     return (
@@ -67,25 +109,38 @@ export default function DeveloperProfilePage({ params }: { params: Promise<{ use
 
   const isSelf = currentUser && currentUser.username.toLowerCase() === profile.username.toLowerCase();
 
-  const handleFollowToggle = () => {
-    const newStatus = localStore.toggleFollow(profile.id);
-    setIsFollowing(newStatus);
+  const handleFollowToggle = async () => {
+    const optimisticStatus = !isFollowing;
+    setIsFollowing(optimisticStatus);
     setProfile((prev) =>
       prev
         ? {
             ...prev,
-            followers_count: newStatus
+            followers_count: optimisticStatus
               ? (prev.followers_count || 0) + 1
               : Math.max(0, (prev.followers_count || 1) - 1),
           }
         : null
     );
 
-    showToast(
-      newStatus ? `@${profile.username} ${t.feed.following}` : `@${profile.username}`,
-      undefined,
-      "info"
-    );
+    try {
+      const res = await dbToggleFollow(profile.id);
+      setIsFollowing(res.following);
+      localStore.toggleFollow(profile.id);
+      showToast(
+        res.following ? `@${profile.username} ${t.feed.following}` : `@${profile.username}`,
+        undefined,
+        "info"
+      );
+    } catch {
+      const newStatus = localStore.toggleFollow(profile.id);
+      setIsFollowing(newStatus);
+      showToast(
+        newStatus ? `@${profile.username} ${t.feed.following}` : `@${profile.username}`,
+        undefined,
+        "info"
+      );
+    }
   };
 
   const handleOpenDM = () => {

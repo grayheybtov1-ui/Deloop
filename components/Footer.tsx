@@ -1,6 +1,7 @@
 import React from "react";
 import Link from "next/link";
-import { Terminal, Github, Heart, Code2 } from "lucide-react";
+import { Github, Heart, Code2 } from "lucide-react";
+import { DeloopLogo } from "@/components/DeloopLogo";
 
 export function Footer() {
   return (
@@ -9,12 +10,7 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
           
           <div className="space-y-3 md:col-span-1">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400">
-                <Terminal className="w-4 h-4" />
-              </div>
-              <span className="font-bold text-slate-200 text-base">Deloop</span>
-            </div>
+            <DeloopLogo variant="app" size="sm" showText={true} />
             <p className="text-xs text-slate-400 leading-relaxed">
               Professional platform for developers to showcase full-stack projects, connect, and analyze GitHub activity.
             </p>

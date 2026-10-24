@@ -6,6 +6,7 @@ import { MapPin, UserPlus, UserCheck, FolderGit2, Users, Code2 } from "lucide-re
 import { Profile } from "@/types";
 import { TechBadge } from "./TechBadge";
 import { localStore } from "@/lib/supabase/store";
+import { dbToggleFollow } from "@/lib/supabase/db";
 import { useToast } from "./Toast";
 import { getSavedLanguage, Language } from "@/lib/i18n";
 
@@ -19,24 +20,37 @@ export function DeveloperCard({ profile: initialProfile }: DeveloperCardProps) {
   const { showToast } = useToast();
   const lang: Language = getSavedLanguage();
 
-  const handleFollowToggle = (e: React.MouseEvent) => {
+  const handleFollowToggle = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
-    const newStatus = localStore.toggleFollow(profile.id);
-    setIsFollowing(newStatus);
+    const optimisticStatus = !isFollowing;
+    setIsFollowing(optimisticStatus);
     setProfile((prev) => ({
       ...prev,
-      followers_count: newStatus
+      followers_count: optimisticStatus
         ? (prev.followers_count || 0) + 1
         : Math.max(0, (prev.followers_count || 1) - 1),
     }));
 
-    showToast(
-      newStatus ? `@${profile.username} ${lang === "tr" ? "takip ediliyor" : "təqib edilir"}` : `@${profile.username}`,
-      undefined,
-      "info"
-    );
+    try {
+      const res = await dbToggleFollow(profile.id);
+      setIsFollowing(res.following);
+      localStore.toggleFollow(profile.id);
+      showToast(
+        res.following ? `@${profile.username} ${lang === "tr" ? "takip ediliyor" : "təqib edilir"}` : `@${profile.username}`,
+        undefined,
+        "info"
+      );
+    } catch {
+      const fallback = localStore.toggleFollow(profile.id);
+      setIsFollowing(fallback);
+      showToast(
+        fallback ? `@${profile.username} ${lang === "tr" ? "takip ediliyor" : "təqib edilir"}` : `@${profile.username}`,
+        undefined,
+        "info"
+      );
+    }
   };
 
   const titleBadgeColor =

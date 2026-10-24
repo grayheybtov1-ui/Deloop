@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { Mail, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { DeloopLogo } from "@/components/DeloopLogo";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -17,7 +18,10 @@ export default function ForgotPasswordPage() {
   return (
     <div className="max-w-md mx-auto py-12 px-4">
       <div className="bg-Deloop-card border border-Deloop-border rounded-2xl p-6 sm:p-8 space-y-6 shadow-xl">
-        <div className="text-center space-y-2">
+        <div className="text-center space-y-3">
+          <div className="flex justify-center">
+            <DeloopLogo variant="app" size="xl" />
+          </div>
           <h1 className="text-2xl font-bold text-slate-100">Reset Password</h1>
           <p className="text-xs text-slate-400">
             Enter your account email to receive a password reset link

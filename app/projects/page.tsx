@@ -4,15 +4,18 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { Sparkles } from "lucide-react";
 import { localStore } from "@/lib/supabase/store";
+import { dbGetProjects, dbGetAllProfiles, dbToggleFollow } from "@/lib/supabase/db";
 import { ProjectCard } from "@/components/ProjectCard";
 import { DeveloperStories } from "@/components/DeveloperStories";
-import { Profile } from "@/types";
+import { Profile, Project } from "@/types";
 import { useToast } from "@/components/Toast";
 import { getSavedLanguage, translations, Language } from "@/lib/i18n";
 
 export default function ProjectsFeedPage() {
   const [currentUser, setCurrentUser] = useState<Profile | null>(null);
   const [suggestedProfiles, setSuggestedProfiles] = useState<Profile[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
   const [lang, setLang] = useState<Language>("tr");
   const { showToast } = useToast();
 
@@ -20,8 +23,26 @@ export default function ProjectsFeedPage() {
     setLang(getSavedLanguage());
     const curr = localStore.getCurrentUser();
     setCurrentUser(curr);
-    const profiles = localStore.getProfiles().filter((p) => p.id !== curr?.id);
-    setSuggestedProfiles(profiles.slice(0, 5));
+
+    async function loadFeed() {
+      try {
+        const [projList, profList] = await Promise.all([
+          dbGetProjects(),
+          dbGetAllProfiles(),
+        ]);
+        setProjects(projList.length > 0 ? projList : localStore.getProjects());
+        const userNow = localStore.getCurrentUser();
+        const pool = profList.length > 0 ? profList : localStore.getProfiles();
+        setSuggestedProfiles(pool.filter((p) => p.id !== userNow?.id).slice(0, 5));
+      } catch {
+        setProjects(localStore.getProjects());
+        const pool = localStore.getProfiles();
+        setSuggestedProfiles(pool.filter((p) => p.id !== curr?.id).slice(0, 5));
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadFeed();
 
     const handleLang = () => setLang(getSavedLanguage());
     window.addEventListener("deloop_lang_changed", handleLang);
@@ -29,18 +50,31 @@ export default function ProjectsFeedPage() {
   }, []);
 
   const t = translations[lang] || translations.tr;
-  const projects = localStore.getProjects();
 
-  const handleFollowToggle = (profile: Profile) => {
-    const isNowFollowing = localStore.toggleFollow(profile.id);
-    setSuggestedProfiles((prev) =>
-      prev.map((p) => (p.id === profile.id ? { ...p, is_following: isNowFollowing } : p))
-    );
-    showToast(
-      isNowFollowing ? t.feed.following : t.feed.follow,
-      isNowFollowing ? `${profile.full_name}` : undefined,
-      "info"
-    );
+  const handleFollowToggle = async (profile: Profile) => {
+    try {
+      const res = await dbToggleFollow(profile.id);
+      const isNowFollowing = res.following;
+      localStore.toggleFollow(profile.id);
+      setSuggestedProfiles((prev) =>
+        prev.map((p) => (p.id === profile.id ? { ...p, is_following: isNowFollowing } : p))
+      );
+      showToast(
+        isNowFollowing ? t.feed.following : t.feed.follow,
+        isNowFollowing ? `${profile.full_name}` : undefined,
+        "info"
+      );
+    } catch {
+      const isNowFollowing = localStore.toggleFollow(profile.id);
+      setSuggestedProfiles((prev) =>
+        prev.map((p) => (p.id === profile.id ? { ...p, is_following: isNowFollowing } : p))
+      );
+      showToast(
+        isNowFollowing ? t.feed.following : t.feed.follow,
+        isNowFollowing ? `${profile.full_name}` : undefined,
+        "info"
+      );
+    }
   };
 
   return (

@@ -16,8 +16,8 @@ import {
 
 import { Profile, Project, PlatformStats } from "@/types";
 import { localStore } from "@/lib/supabase/store";
+import { dbGetAllProfiles, dbGetProjects, dbGetPlatformStats, dbAdminDeleteProject } from "@/lib/supabase/db";
 import { StatCard } from "@/components/StatCard";
-import { Sidebar } from "@/components/Sidebar";
 import { useToast } from "@/components/Toast";
 import { Modal } from "@/components/Modal";
 import { formatDate } from "@/lib/utils";
@@ -47,16 +47,36 @@ export default function AdminPage() {
     }
 
     setCurrentUser(curr);
-    setStats(localStore.getStats());
-    setAllUsers(localStore.getProfiles());
-    setAllProjects(localStore.getProjects());
+
+    async function loadAdminData() {
+      try {
+        const [statsData, usersData, projectsData] = await Promise.all([
+          dbGetPlatformStats(),
+          dbGetAllProfiles(),
+          dbGetProjects(),
+        ]);
+        setStats(statsData);
+        setAllUsers(usersData.length > 0 ? usersData : localStore.getProfiles());
+        setAllProjects(projectsData.length > 0 ? projectsData : localStore.getProjects());
+      } catch {
+        setStats(localStore.getStats());
+        setAllUsers(localStore.getProfiles());
+        setAllProjects(localStore.getProjects());
+      }
+    }
+    loadAdminData();
   }, [router]);
 
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (!itemToDelete) return;
 
     if (itemToDelete.type === "project") {
-      localStore.deleteProject(itemToDelete.id);
+      try {
+        await dbAdminDeleteProject(itemToDelete.id);
+        localStore.deleteProject(itemToDelete.id);
+      } catch {
+        localStore.deleteProject(itemToDelete.id);
+      }
       setAllProjects((prev) => prev.filter((p) => p.id !== itemToDelete.id));
       showToast("Admin Action", `Project "${itemToDelete.name}" was deleted.`, "info");
     }
@@ -74,10 +94,7 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="flex flex-col lg:flex-row gap-8">
-      <Sidebar user={currentUser} />
-
-      <div className="flex-1 space-y-8">
+    <div className="space-y-8">
         
         {/* ADMIN HEADER BANNER */}
         <div className="p-6 rounded-2xl bg-gradient-to-r from-amber-950/40 via-Deloop-card to-slate-900 border border-amber-900/40 space-y-2">
@@ -238,10 +255,8 @@ export default function AdminPage() {
           </div>
         )}
 
-      </div>
-
-      {/* ADMIN DELETE MODAL */}
-      <Modal
+        {/* ADMIN DELETE MODAL */}
+        <Modal
         isOpen={!!itemToDelete}
         onClose={() => setItemToDelete(null)}
         title="Admin Confirmation"
@@ -266,7 +281,6 @@ export default function AdminPage() {
           </div>
         </div>
       </Modal>
-
     </div>
   );
 }

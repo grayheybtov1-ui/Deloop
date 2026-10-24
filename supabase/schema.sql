@@ -1,5 +1,7 @@
--- Deloop Supabase PostgreSQL Schema DDL
--- Run this script in your Supabase SQL Editor
+-- ============================================================
+-- DELOOP — SUPABASE DATABASE SCHEMA
+-- Supabase Dashboard → SQL Editor → Yeni sorğu → RUN et
+-- ============================================================
 
 -- 1. PROFILES TABLE
 CREATE TABLE IF NOT EXISTS public.profiles (
@@ -13,25 +15,12 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   website TEXT,
   github_username TEXT,
   linkedin_url TEXT,
+  skills TEXT[] DEFAULT '{}',
   role TEXT DEFAULT 'developer' CHECK (role IN ('developer', 'admin')),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 2. SKILLS TABLE
-CREATE TABLE IF NOT EXISTS public.skills (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  name TEXT UNIQUE NOT NULL,
-  category TEXT DEFAULT 'general'
-);
-
--- 3. PROFILE SKILLS JUNCTION TABLE
-CREATE TABLE IF NOT EXISTS public.profile_skills (
-  profile_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
-  skill_id UUID REFERENCES public.skills(id) ON DELETE CASCADE,
-  PRIMARY KEY (profile_id, skill_id)
-);
-
--- 4. PROJECTS TABLE
+-- 2. PROJECTS TABLE
 CREATE TABLE IF NOT EXISTS public.projects (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
@@ -48,7 +37,7 @@ CREATE TABLE IF NOT EXISTS public.projects (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 5. PROJECT LIKES TABLE
+-- 3. PROJECT LIKES TABLE
 CREATE TABLE IF NOT EXISTS public.project_likes (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   project_id UUID REFERENCES public.projects(id) ON DELETE CASCADE NOT NULL,
@@ -57,7 +46,7 @@ CREATE TABLE IF NOT EXISTS public.project_likes (
   UNIQUE(project_id, user_id)
 );
 
--- 6. COMMENTS TABLE
+-- 4. COMMENTS TABLE
 CREATE TABLE IF NOT EXISTS public.comments (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   project_id UUID REFERENCES public.projects(id) ON DELETE CASCADE NOT NULL,
@@ -66,7 +55,7 @@ CREATE TABLE IF NOT EXISTS public.comments (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 7. FOLLOWS TABLE
+-- 5. FOLLOWS TABLE
 CREATE TABLE IF NOT EXISTS public.follows (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   follower_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
@@ -75,7 +64,7 @@ CREATE TABLE IF NOT EXISTS public.follows (
   UNIQUE(follower_id, following_id)
 );
 
--- 8. NOTIFICATIONS TABLE
+-- 6. NOTIFICATIONS TABLE
 CREATE TABLE IF NOT EXISTS public.notifications (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
@@ -86,7 +75,7 @@ CREATE TABLE IF NOT EXISTS public.notifications (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 9. MESSAGES TABLE (Direct Messages / DM)
+-- 7. MESSAGES TABLE
 CREATE TABLE IF NOT EXISTS public.messages (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   sender_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
@@ -96,7 +85,9 @@ CREATE TABLE IF NOT EXISTS public.messages (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- ROW LEVEL SECURITY (RLS) POLICIES
+-- ============================================================
+-- ROW LEVEL SECURITY (RLS)
+-- ============================================================
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.projects ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.project_likes ENABLE ROW LEVEL SECURITY;
@@ -105,7 +96,7 @@ ALTER TABLE public.follows ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 
--- Profiles: Anyone can view profiles, user can update their own
+-- PROFILES
 DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON public.profiles;
 CREATE POLICY "Public profiles are viewable by everyone" ON public.profiles FOR SELECT USING (true);
 DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
@@ -113,7 +104,7 @@ CREATE POLICY "Users can insert their own profile" ON public.profiles FOR INSERT
 DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
 CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
 
--- Projects: Anyone can view, author can insert/update/delete
+-- PROJECTS
 DROP POLICY IF EXISTS "Projects are viewable by everyone" ON public.projects;
 CREATE POLICY "Projects are viewable by everyone" ON public.projects FOR SELECT USING (true);
 DROP POLICY IF EXISTS "Users can create projects" ON public.projects;
@@ -123,13 +114,13 @@ CREATE POLICY "Users can update own projects" ON public.projects FOR UPDATE USIN
 DROP POLICY IF EXISTS "Users can delete own projects" ON public.projects;
 CREATE POLICY "Users can delete own projects" ON public.projects FOR DELETE USING (auth.uid() = user_id);
 
--- Likes: Public view, authenticated user create/delete own likes
+-- LIKES
 DROP POLICY IF EXISTS "Likes are viewable by everyone" ON public.project_likes;
 CREATE POLICY "Likes are viewable by everyone" ON public.project_likes FOR SELECT USING (true);
 DROP POLICY IF EXISTS "Users can toggle likes" ON public.project_likes;
 CREATE POLICY "Users can toggle likes" ON public.project_likes FOR ALL USING (auth.uid() = user_id);
 
--- Comments: Public view, authenticated user create/delete own comments
+-- COMMENTS
 DROP POLICY IF EXISTS "Comments are viewable by everyone" ON public.comments;
 CREATE POLICY "Comments are viewable by everyone" ON public.comments FOR SELECT USING (true);
 DROP POLICY IF EXISTS "Users can create comments" ON public.comments;
@@ -137,37 +128,44 @@ CREATE POLICY "Users can create comments" ON public.comments FOR INSERT WITH CHE
 DROP POLICY IF EXISTS "Users can delete own comments" ON public.comments;
 CREATE POLICY "Users can delete own comments" ON public.comments FOR DELETE USING (auth.uid() = user_id);
 
--- Follows: Public view, authenticated user toggle follow
+-- FOLLOWS
 DROP POLICY IF EXISTS "Follows are viewable by everyone" ON public.follows;
 CREATE POLICY "Follows are viewable by everyone" ON public.follows FOR SELECT USING (true);
 DROP POLICY IF EXISTS "Users can follow/unfollow" ON public.follows;
 CREATE POLICY "Users can follow/unfollow" ON public.follows FOR ALL USING (auth.uid() = follower_id);
 
--- Notifications: User can view & update own notifications
+-- NOTIFICATIONS
 DROP POLICY IF EXISTS "Users can view own notifications" ON public.notifications;
 CREATE POLICY "Users can view own notifications" ON public.notifications FOR SELECT USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "System can create notifications" ON public.notifications;
+CREATE POLICY "System can create notifications" ON public.notifications FOR INSERT WITH CHECK (true);
 DROP POLICY IF EXISTS "Users can update own notifications" ON public.notifications;
 CREATE POLICY "Users can update own notifications" ON public.notifications FOR UPDATE USING (auth.uid() = user_id);
 
--- Messages: Users can view messages they sent or received, send messages as themselves
+-- MESSAGES
 DROP POLICY IF EXISTS "Users can view own direct messages" ON public.messages;
 CREATE POLICY "Users can view own direct messages" ON public.messages FOR SELECT USING (auth.uid() = sender_id OR auth.uid() = receiver_id);
 DROP POLICY IF EXISTS "Users can send direct messages" ON public.messages;
 CREATE POLICY "Users can send direct messages" ON public.messages FOR INSERT WITH CHECK (auth.uid() = sender_id);
 
--- TRIGGER FOR AUTOMATIC PROFILE CREATION ON SIGNUP
+-- ============================================================
+-- TRIGGER: Auto-create profile on signup
+-- ============================================================
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.profiles (id, username, full_name, developer_title, avatar_url, github_username)
+  INSERT INTO public.profiles (id, username, full_name, developer_title, avatar_url, skills, role)
   VALUES (
     new.id,
     COALESCE(new.raw_user_meta_data->>'username', split_part(new.email, '@', 1)),
-    COALESCE(new.raw_user_meta_data->>'full_name', 'Developer'),
+    COALESCE(new.raw_user_meta_data->>'full_name', split_part(new.email, '@', 1)),
     COALESCE(new.raw_user_meta_data->>'developer_title', 'Full-Stack Developer'),
-    COALESCE(new.raw_user_meta_data->>'avatar_url', 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'),
-    new.raw_user_meta_data->>'github_username'
-  );
+    COALESCE(new.raw_user_meta_data->>'avatar_url', 
+      'https://api.dicebear.com/7.x/bottts/svg?seed=' || split_part(new.email, '@', 1)),
+    '{}',
+    'developer'
+  )
+  ON CONFLICT (id) DO NOTHING;
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -176,3 +174,9 @@ DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- ============================================================
+-- ADMIN: Make a user admin by username (run after signup)
+-- Replace 'your_username' with your actual username
+-- ============================================================
+-- UPDATE public.profiles SET role = 'admin' WHERE username = 'your_username';

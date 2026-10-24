@@ -31,8 +31,8 @@ import {
 
 import { Profile, Project, Notification } from "@/types";
 import { localStore } from "@/lib/supabase/store";
+import { dbGetProjects, dbGetNotifications, dbDeleteProject, dbGetProfile } from "@/lib/supabase/db";
 import { StatCard } from "@/components/StatCard";
-import { Sidebar } from "@/components/Sidebar";
 import { Modal } from "@/components/Modal";
 import { useToast } from "@/components/Toast";
 import { formatDate } from "@/lib/utils";
@@ -69,15 +69,43 @@ export default function DashboardPage() {
       router.push("/login");
       return;
     }
-    setUser(curr);
-    const allProj = localStore.getProjects();
-    setUserProjects(allProj.filter((p) => p.user_id === curr.id || p.profile?.username === curr.username));
-    setNotifications(localStore.getNotifications().slice(0, 5));
+    const activeUser = curr;
+    setUser(activeUser);
+
+    async function loadDashboard() {
+      try {
+        const [projects, notifs, freshUser] = await Promise.all([
+          dbGetProjects({ userId: activeUser.id }),
+          dbGetNotifications(),
+          dbGetProfile(activeUser.id),
+        ]);
+        if (freshUser) {
+          setUser(freshUser);
+          localStore.setCurrentUser(freshUser);
+        }
+        setUserProjects(
+          projects.length > 0
+            ? projects
+            : localStore.getProjects().filter((p) => p.user_id === activeUser.id || p.profile?.username === activeUser.username)
+        );
+        setNotifications(notifs.slice(0, 5));
+      } catch {
+        const allProj = localStore.getProjects();
+        setUserProjects(allProj.filter((p) => p.user_id === activeUser.id || p.profile?.username === activeUser.username));
+        setNotifications(localStore.getNotifications().slice(0, 5));
+      }
+    }
+    loadDashboard();
   }, [router]);
 
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (!projectToDelete) return;
-    localStore.deleteProject(projectToDelete.id);
+    try {
+      await dbDeleteProject(projectToDelete.id);
+      localStore.deleteProject(projectToDelete.id);
+    } catch {
+      localStore.deleteProject(projectToDelete.id);
+    }
     setUserProjects((prev) => prev.filter((p) => p.id !== projectToDelete.id));
     showToast("Project Deleted", `"${projectToDelete.title}" was removed.`, "info");
     setProjectToDelete(null);
@@ -88,13 +116,7 @@ export default function DashboardPage() {
   const completedCount = userProjects.filter((p) => p.status === "Completed").length;
 
   return (
-    <div className="flex flex-col lg:flex-row gap-8">
-      
-      {/* SIDEBAR NAVIGATION */}
-      <Sidebar user={user} />
-
-      {/* MAIN DASHBOARD CONTENT */}
-      <div className="flex-1 space-y-8">
+    <div className="space-y-8">
         
         {/* WELCOME BANNER */}
         <div className="relative p-6 sm:p-8 rounded-2xl bg-gradient-to-r from-blue-950/60 via-Deloop-card to-slate-900 border border-Deloop-border overflow-hidden">
@@ -326,7 +348,6 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
-      </div>
 
       {/* CONFIRM DELETE MODAL */}
       <Modal
@@ -354,7 +375,6 @@ export default function DashboardPage() {
           </div>
         </div>
       </Modal>
-
     </div>
   );
 }

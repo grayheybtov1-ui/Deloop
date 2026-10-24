@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { Project } from "@/types";
 import { localStore } from "@/lib/supabase/store";
+import { dbToggleLike, dbAddComment } from "@/lib/supabase/db";
 import { useToast } from "./Toast";
 import { timeAgo } from "@/lib/utils";
 
@@ -33,16 +34,34 @@ export function ProjectCard({ project: initialProject }: ProjectCardProps) {
   const [commentsCount, setCommentsCount] = useState<number>(initialProject.comments_count || 0);
   const { showToast } = useToast();
 
-  const handleLikeToggle = (e?: React.MouseEvent) => {
+  const handleLikeToggle = async (e?: React.MouseEvent) => {
     if (e) {
       e.preventDefault();
       e.stopPropagation();
     }
-    const result = localStore.toggleLike(project.id);
-    setHasLiked(result.liked);
-    setLikesCount(result.count);
-    if (result.liked) {
-      showToast("❤️ Beğenildi", `"${project.title}"`, "success");
+    const prevLiked = hasLiked;
+    const prevCount = likesCount;
+    const optimisticLiked = !prevLiked;
+    const optimisticCount = optimisticLiked ? prevCount + 1 : Math.max(0, prevCount - 1);
+    setHasLiked(optimisticLiked);
+    setLikesCount(optimisticCount);
+
+    try {
+      const result = await dbToggleLike(project.id);
+      setHasLiked(result.liked);
+      setLikesCount(result.count);
+      localStore.toggleLike(project.id); // sync local cache
+      if (result.liked) {
+        showToast("❤️ Beğenildi", `"${project.title}"`, "success");
+      }
+    } catch {
+      // Fallback to localStore if DB isn't reached
+      const fallback = localStore.toggleLike(project.id);
+      setHasLiked(fallback.liked);
+      setLikesCount(fallback.count);
+      if (fallback.liked) {
+        showToast("❤️ Beğenildi", `"${project.title}"`, "success");
+      }
     }
   };
 
@@ -52,13 +71,21 @@ export function ProjectCard({ project: initialProject }: ProjectCardProps) {
     setTimeout(() => setShowHeartOverlay(false), 850);
   };
 
-  const handleAddQuickComment = (e: React.FormEvent) => {
+  const handleAddQuickComment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!commentText.trim()) return;
-    localStore.addComment(project.id, commentText);
-    setCommentsCount((prev) => prev + 1);
+    const text = commentText.trim();
     setCommentText("");
-    showToast("💬 Yorum eklendi", "", "success");
+    setCommentsCount((prev) => prev + 1);
+
+    try {
+      await dbAddComment(project.id, text);
+      localStore.addComment(project.id, text); // sync cache
+      showToast("💬 Yorum eklendi", "", "success");
+    } catch {
+      localStore.addComment(project.id, text);
+      showToast("💬 Yorum eklendi", "", "success");
+    }
   };
 
   const handleDirectMessage = (e: React.MouseEvent) => {
@@ -79,12 +106,7 @@ export function ProjectCard({ project: initialProject }: ProjectCardProps) {
   };
 
   return (
-    <article
-      style={{
-        backgroundColor: "var(--bg-card)",
-        borderBottom: "1px solid var(--border-color)",
-      }}
-    >
+    <article className="bg-neutral-900/40 border border-neutral-800/80 rounded-2xl overflow-hidden hover:border-neutral-700/80 transition-all shadow-sm">
       {/* ── 1. POST HEADER ── */}
       <div className="flex items-center justify-between px-3 py-2.5 sm:px-4">
         <div className="flex items-center gap-2.5">

@@ -10,15 +10,8 @@ export function DeveloperStories() {
   const currentUser = localStore.getCurrentUser();
 
   return (
-    <div
-      className="overflow-x-auto no-scrollbar"
-      style={{
-        borderBottom: "1px solid var(--border-color)",
-        padding: "16px 4px",
-        backgroundColor: "var(--bg-card)",
-      }}
-    >
-      <div className="flex items-start gap-4" style={{ minWidth: "max-content", padding: "0 12px" }}>
+    <div className="bg-neutral-900/40 border border-neutral-800/80 rounded-2xl p-4 overflow-x-auto no-scrollbar shadow-sm mb-6">
+      <div className="flex items-start gap-4 min-w-max px-1">
 
         {/* MY STORY — Add Story */}
         <div className="flex flex-col items-center gap-1.5 cursor-pointer group" style={{ width: "64px" }}>

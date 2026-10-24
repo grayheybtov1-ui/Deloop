@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Bell, CheckCheck, UserPlus, Heart, MessageSquare } from "lucide-react";
 import { Notification, Profile } from "@/types";
 import { localStore } from "@/lib/supabase/store";
+import { dbGetNotifications, dbMarkNotificationRead, dbMarkAllNotificationsRead } from "@/lib/supabase/db";
 import { useToast } from "@/components/Toast";
 import { timeAgo } from "@/lib/utils";
 import { getSavedLanguage, translations, Language } from "@/lib/i18n";
@@ -26,7 +27,16 @@ export default function NotificationsPage() {
       return;
     }
     setUser(curr);
-    setNotifications(localStore.getNotifications());
+
+    async function fetchNotifs() {
+      try {
+        const data = await dbGetNotifications();
+        setNotifications(data.length > 0 ? data : localStore.getNotifications());
+      } catch {
+        setNotifications(localStore.getNotifications());
+      }
+    }
+    fetchNotifs();
 
     const handleLang = () => setLang(getSavedLanguage());
     window.addEventListener("deloop_lang_changed", handleLang);
@@ -35,15 +45,25 @@ export default function NotificationsPage() {
 
   const t = translations[lang] || translations.tr;
 
-  const handleMarkAllRead = () => {
-    localStore.markAllNotificationsAsRead();
+  const handleMarkAllRead = async () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+    try {
+      await dbMarkAllNotificationsRead();
+      localStore.markAllNotificationsAsRead();
+    } catch {
+      localStore.markAllNotificationsAsRead();
+    }
     showToast(t.notifications.markAllRead, undefined, "info");
   };
 
-  const handleNotificationClick = (notif: Notification) => {
-    localStore.markNotificationAsRead(notif.id);
+  const handleNotificationClick = async (notif: Notification) => {
     setNotifications((prev) => prev.map((n) => (n.id === notif.id ? { ...n, is_read: true } : n)));
+    try {
+      await dbMarkNotificationRead(notif.id);
+      localStore.markNotificationAsRead(notif.id);
+    } catch {
+      localStore.markNotificationAsRead(notif.id);
+    }
 
     if (notif.type === "follow" && notif.actor) {
       router.push(`/developers/${notif.actor.username}`);
