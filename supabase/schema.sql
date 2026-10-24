@@ -103,6 +103,8 @@ DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
 CREATE POLICY "Users can insert their own profile" ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
 DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
 CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
+DROP POLICY IF EXISTS "Users can delete own profile" ON public.profiles;
+CREATE POLICY "Users can delete own profile" ON public.profiles FOR DELETE USING (auth.uid() = id);
 
 -- PROJECTS
 DROP POLICY IF EXISTS "Projects are viewable by everyone" ON public.projects;
@@ -176,7 +178,19 @@ CREATE TRIGGER on_auth_user_created
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- ============================================================
+-- DELETE USER ACCOUNT FUNCTION
+-- Allows a logged-in user to permanently delete their auth account and cascade data
+-- ============================================================
+CREATE OR REPLACE FUNCTION public.delete_user_account()
+RETURNS void AS $$
+BEGIN
+  DELETE FROM auth.users WHERE id = auth.uid();
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ============================================================
 -- ADMIN: Make a user admin by username (run after signup)
 -- Replace 'your_username' with your actual username
 -- ============================================================
 -- UPDATE public.profiles SET role = 'admin' WHERE username = 'your_username';
+

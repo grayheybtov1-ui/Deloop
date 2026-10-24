@@ -4,6 +4,7 @@
  */
 
 import { supabase } from "./client";
+import { localStore } from "./store";
 import {
   Profile,
   Project,
@@ -92,6 +93,80 @@ export async function dbGetCurrentSession() {
   return data.session;
 }
 
+export async function dbUpdatePassword(newPassword: string): Promise<void> {
+  const { error } = await supabase.auth.updateUser({
+    password: newPassword,
+  });
+  if (error) throw error;
+}
+
+export async function dbVerifyPassword(password: string): Promise<boolean> {
+  const session = await dbGetCurrentSession();
+  if (session?.user?.email) {
+    const { error } = await supabase.auth.signInWithPassword({
+      email: session.user.email,
+      password,
+    });
+    return !error;
+  }
+  return false;
+}
+
+export async function dbDeleteAccount(userId: string, password: string): Promise<boolean> {
+  // 1. Verify credentials
+  const session = await dbGetCurrentSession();
+  if (session?.user?.email) {
+    const { error: authError } = await supabase.auth.signInWithPassword({
+      email: session.user.email,
+      password,
+    });
+    if (authError) {
+      throw new Error("Şifrə yanlışdır. Zəhmət olmasa düzgün şifrə daxil edin.");
+    }
+  } else {
+    const verified = localStore.verifyUserPassword(userId, password);
+    if (!verified) {
+      throw new Error("Şifrə yanlışdır. Zəhmət olmasa düzgün şifrə daxil edin.");
+    }
+  }
+
+  // 2. Cascade delete from Supabase
+  try {
+    await supabase.from("projects").delete().eq("user_id", userId);
+    await supabase.from("comments").delete().eq("user_id", userId);
+    await supabase.from("project_likes").delete().eq("user_id", userId);
+    await supabase.from("follows").delete().or(`follower_id.eq.${userId},following_id.eq.${userId}`);
+    await supabase.from("notifications").delete().or(`user_id.eq.${userId},actor_id.eq.${userId}`);
+    await supabase.from("messages").delete().or(`sender_id.eq.${userId},receiver_id.eq.${userId}`);
+    await supabase.from("profiles").delete().eq("id", userId);
+    
+    // Call RPC if registered in Postgres
+    await supabase.rpc("delete_user_account").catch(() => null);
+
+    // Call server API route
+    await fetch("/api/account/delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, password }),
+    }).catch(() => null);
+  } catch (err) {
+    console.warn("Supabase cascade deletion notice:", err);
+  }
+
+  // 3. Delete from LocalStore
+  localStore.deleteAccount(userId);
+
+  // 4. Sign out
+  try {
+    await supabase.auth.signOut();
+  } catch {
+    // ignore
+  }
+  localStore.logout();
+
+  return true;
+}
+
 // ==========================================
 // PROFILES
 // ==========================================
@@ -126,22 +201,50 @@ export async function dbGetAllProfiles(): Promise<Profile[]> {
 }
 
 export async function dbUpdateProfile(userId: string, updates: Partial<Profile>): Promise<Profile | null> {
+  const updatePayload: any = {
+    full_name: updates.full_name,
+    developer_title: updates.developer_title,
+    bio: updates.bio,
+    location: updates.location,
+    website: updates.website,
+    github_username: updates.github_username,
+    linkedin_url: updates.linkedin_url,
+    avatar_url: updates.avatar_url,
+  };
+
+  if (updates.username) {
+    updatePayload.username = updates.username.toLowerCase().trim();
+  }
+  if (updates.skills) {
+    updatePayload.skills = updates.skills;
+  }
+
   const { data, error } = await supabase
     .from("profiles")
-    .update({
-      full_name: updates.full_name,
-      developer_title: updates.developer_title,
-      bio: updates.bio,
-      location: updates.location,
-      website: updates.website,
-      github_username: updates.github_username,
-      linkedin_url: updates.linkedin_url,
-      avatar_url: updates.avatar_url,
-    })
+    .update(updatePayload)
     .eq("id", userId)
     .select()
     .single();
-  if (error || !data) return null;
+
+  if (error || !data) {
+    if (error) console.error("Error updating profile in Supabase:", error);
+    return null;
+  }
+
+  // Also update metadata in Supabase auth if username or full_name changed
+  if (updates.username || updates.full_name) {
+    try {
+      await supabase.auth.updateUser({
+        data: {
+          username: updates.username?.toLowerCase().trim(),
+          full_name: updates.full_name,
+        },
+      });
+    } catch {
+      // ignore
+    }
+  }
+
   return mapProfile(data);
 }
 

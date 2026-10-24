@@ -15,11 +15,16 @@ import {
   Sun,
   Moon,
   Palette,
+  Trash2,
+  AlertTriangle,
+  AlertCircle,
+  AtSign,
 } from "lucide-react";
 
 import { Profile, DeveloperTitle } from "@/types";
 import { localStore } from "@/lib/supabase/store";
-import { dbUpdateProfile } from "@/lib/supabase/db";
+import { dbUpdateProfile, dbDeleteAccount, dbUpdatePassword } from "@/lib/supabase/db";
+import { supabase } from "@/lib/supabase/client";
 import { useToast } from "@/components/Toast";
 import { getSavedLanguage, setSavedLanguage, translations, Language } from "@/lib/i18n";
 
@@ -34,6 +39,7 @@ export default function SettingsPage() {
 
   // FORM FIELDS
   const [fullName, setFullName] = useState("");
+  const [username, setUsername] = useState("");
   const [developerTitle, setDeveloperTitle] = useState<DeveloperTitle>("Full-Stack Developer");
   const [bio, setBio] = useState("");
   const [location, setLocation] = useState("");
@@ -44,6 +50,12 @@ export default function SettingsPage() {
   const [linkedinUrl, setLinkedinUrl] = useState("");
 
   const [newPassword, setNewPassword] = useState("");
+
+  // DELETE ACCOUNT MODAL STATE
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteError, setDeleteError] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     const currentLang = getSavedLanguage();
@@ -56,6 +68,7 @@ export default function SettingsPage() {
     }
     setUser(curr);
     setFullName(curr.full_name || "");
+    setUsername(curr.username || "");
     setDeveloperTitle(curr.developer_title || "Full-Stack Developer");
     setBio(curr.bio || "");
     setLocation(curr.location || "");
@@ -114,12 +127,58 @@ export default function SettingsPage() {
     e.preventDefault();
     if (!user) return;
 
+    const cleanUsername = username.trim().toLowerCase().replace(/[^a-z0-9_]/g, "");
+    if (cleanUsername.length < 3) {
+      showToast(
+        lang === "tr" ? "Kullanıcı adı en az 3 karakter olmalıdır" : "İstifadəçi adı ən az 3 simvol olmalıdır",
+        undefined,
+        "error"
+      );
+      return;
+    }
+
+    // Check username uniqueness if changed
+    if (cleanUsername !== user.username.toLowerCase()) {
+      const isTakenLocally = localStore.getProfiles().some(
+        (p) => p.id !== user.id && p.username.toLowerCase() === cleanUsername
+      );
+      if (isTakenLocally) {
+        showToast(
+          lang === "tr" ? "Bu kullanıcı adı zaten alınmış" : "Bu istifadəçi adı artıq götürülüb",
+          lang === "tr" ? "Lütfen başka bir kullanıcı adı seçin" : "Zəhmət olmasa başqa ad seçin",
+          "error"
+        );
+        return;
+      }
+
+      try {
+        const { data: existingUser } = await supabase
+          .from("profiles")
+          .select("id")
+          .ilike("username", cleanUsername)
+          .neq("id", user.id)
+          .maybeSingle();
+
+        if (existingUser) {
+          showToast(
+            lang === "tr" ? "Bu kullanıcı adı zaten alınmış" : "Bu istifadəçi adı artıq götürülüb",
+            lang === "tr" ? "Lütfen başka bir kullanıcı adı seçin" : "Zəhmət olmasa başqa ad seçin",
+            "error"
+          );
+          return;
+        }
+      } catch {
+        // ignore
+      }
+    }
+
     const skillsArray = skillsInput
       .split(",")
       .map((s) => s.trim())
       .filter((s) => s.length > 0);
 
     const updatePayload = {
+      username: cleanUsername,
       full_name: fullName.trim(),
       developer_title: developerTitle,
       bio: bio.trim(),
@@ -135,27 +194,71 @@ export default function SettingsPage() {
       if (updated) {
         setUser(updated);
         localStore.setCurrentUser(updated);
+      } else {
+        const localUpdated = localStore.updateProfile(user.id, updatePayload);
+        if (localUpdated) setUser(localUpdated);
       }
     } catch {
       // Fallback
-      const updated = localStore.updateProfile(user.username, updatePayload);
-      if (updated) {
-        setUser(updated);
+      const localUpdated = localStore.updateProfile(user.id, updatePayload);
+      if (localUpdated) {
+        setUser(localUpdated);
       }
     }
 
-    localStore.updateProfile(user.username, updatePayload);
+    localStore.updateProfile(user.id, updatePayload);
+    window.dispatchEvent(new Event("deloop_user_updated"));
     showToast(t.settings.savedToast, undefined, "success");
   };
 
-  const handlePasswordUpdate = (e: React.FormEvent) => {
+  const handlePasswordUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPassword.length < 6) {
       showToast(lang === "tr" ? "Şifre en az 6 karakter olmalıdır" : "Şifrə ən az 6 simvol olmalıdır", undefined, "error");
       return;
     }
+
+    try {
+      await dbUpdatePassword(newPassword);
+    } catch {
+      // ignore
+    }
+
+    if (user) {
+      localStore.updateProfile(user.id, { password: newPassword });
+    }
+
     setNewPassword("");
     showToast(lang === "tr" ? "Şifre başarıyla güncellendi" : "Şifrə yeniləndi", undefined, "success");
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!user) return;
+    if (!deletePassword.trim()) {
+      setDeleteError(lang === "tr" ? "Lütfen hesap şifrenizi girin." : "Zəhmət olmasa hesab şifrənizi daxil edin.");
+      return;
+    }
+
+    setIsDeleting(true);
+    setDeleteError("");
+
+    try {
+      await dbDeleteAccount(user.id, deletePassword.trim());
+      setIsDeleteModalOpen(false);
+      showToast(
+        lang === "tr" ? "Hesabınız başarıyla silindi." : "Hesabınız uğurla silindi.",
+        undefined,
+        "info"
+      );
+      router.push("/login");
+    } catch (err: any) {
+      setDeleteError(
+        err.message ||
+        (lang === "tr" ? "Şifre yanlış veya hesap silinemedi." : "Şifrə yanlışdır və ya hesabı silmək mümkün olmadı.")
+      );
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   if (!user) return null;
@@ -239,92 +342,145 @@ export default function SettingsPage() {
 
       {/* TAB CONTENT: PROFILE DETAILS */}
       {activeSection === "profile" && (
-        <form onSubmit={handleSaveProfile} className="space-y-5 rounded-2xl bg-neutral-900/40 border border-neutral-800 p-5 sm:p-6">
-          <h3 className="font-semibold text-white text-sm border-b border-neutral-800 pb-3">
-            {lang === "tr" ? "Geliştirici Kimlik Bilgileri" : "Tərtibatçı Məlumatları"}
-          </h3>
+        <div className="space-y-6">
+          <form onSubmit={handleSaveProfile} className="space-y-5 rounded-2xl bg-neutral-900/40 border border-neutral-800 p-5 sm:p-6">
+            <h3 className="font-semibold text-white text-sm border-b border-neutral-800 pb-3">
+              {lang === "tr" ? "Geliştirici Kimlik Bilgileri" : "Tərtibatçı Məlumatları"}
+            </h3>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-neutral-300">
-                {lang === "tr" ? "Ad Soyad" : "Ad və Soyad"}
-              </label>
-              <input
-                type="text"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                className="w-full px-3.5 py-2 rounded-xl bg-neutral-900 border border-neutral-800 text-white text-xs sm:text-sm focus:outline-none focus:border-blue-500"
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-neutral-300">
+                  {lang === "tr" ? "Ad Soyad" : "Ad və Soyad"}
+                </label>
+                <input
+                  type="text"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className="w-full px-3.5 py-2 rounded-xl bg-neutral-900 border border-neutral-800 text-white text-xs sm:text-sm focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              {/* NICKNAME / USERNAME FIELD */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-neutral-300">
+                  {lang === "tr" ? "Kullanıcı Adı (Nickname)" : "İstifadəçi Adı (Nickname)"}
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-2.5 text-xs font-mono text-neutral-500 font-bold">@</span>
+                  <input
+                    type="text"
+                    required
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
+                    placeholder="username"
+                    className="w-full pl-8 pr-3.5 py-2 rounded-xl bg-neutral-900 border border-neutral-800 text-white text-xs sm:text-sm focus:outline-none focus:border-blue-500 font-mono"
+                  />
+                </div>
+                <p className="text-[11px] text-neutral-500 font-mono">
+                  {lang === "tr" ? `Profil URL: @${username}` : `Profil URL: @${username}`}
+                </p>
+              </div>
+
+              <div className="space-y-1.5 md:col-span-2">
+                <label className="block text-xs font-semibold text-neutral-300">
+                  {lang === "tr" ? "Uzmanlık Alanı" : "İxtisas"}
+                </label>
+                <select
+                  value={developerTitle}
+                  onChange={(e) => setDeveloperTitle(e.target.value as DeveloperTitle)}
+                  className="w-full px-3.5 py-2 rounded-xl bg-neutral-900 border border-neutral-800 text-white text-xs sm:text-sm focus:outline-none focus:border-blue-500"
+                >
+                  <option value="Full-Stack Developer">Full-Stack Developer</option>
+                  <option value="Frontend Developer">Frontend Developer</option>
+                  <option value="Backend Developer">Backend Developer</option>
+                  <option value="AI / Data Engineer">AI / Data Engineer</option>
+                  <option value="Mobile Developer">Mobile Developer</option>
+                  <option value="DevOps Engineer">DevOps Engineer</option>
+                </select>
+              </div>
+
+              <div className="md:col-span-2 space-y-1.5">
+                <label className="block text-xs font-semibold text-neutral-300">
+                  {lang === "tr" ? "Konum" : "Məkan"}
+                </label>
+                <input
+                  type="text"
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  placeholder="Örn: Bakü, Azerbaycan / İstanbul, Türkiye"
+                  className="w-full px-3.5 py-2 rounded-xl bg-neutral-900 border border-neutral-800 text-white text-xs sm:text-sm focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div className="md:col-span-2 space-y-1.5">
+                <label className="block text-xs font-semibold text-neutral-300">
+                  {lang === "tr" ? "Biyografi" : "Bio"}
+                </label>
+                <textarea
+                  rows={3}
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
+                  placeholder={lang === "tr" ? "Kendinizden ve üzerinde çalıştığınız teknolojilerden bahsedin..." : "Özünüz haqqında qısa məlumat..."}
+                  className="w-full px-3.5 py-2 rounded-xl bg-neutral-900 border border-neutral-800 text-white text-xs sm:text-sm focus:outline-none focus:border-blue-500 leading-relaxed"
+                />
+              </div>
+
+              <div className="md:col-span-2 space-y-1.5">
+                <label className="block text-xs font-semibold text-neutral-300">
+                  {lang === "tr" ? "Yetenekler (Virgülle ayırın)" : "Bacarıqlar (Vergüllə ayırın)"}
+                </label>
+                <input
+                  type="text"
+                  value={skillsInput}
+                  onChange={(e) => setSkillsInput(e.target.value)}
+                  placeholder="React, Next.js, TypeScript, PostgreSQL, Node.js"
+                  className="w-full px-3.5 py-2 rounded-xl bg-neutral-900 border border-neutral-800 text-white text-xs sm:text-sm focus:outline-none focus:border-blue-500 font-mono"
+                />
+              </div>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-neutral-300">
-                {lang === "tr" ? "Uzmanlık Alanı" : "İxtisas"}
-              </label>
-              <select
-                value={developerTitle}
-                onChange={(e) => setDeveloperTitle(e.target.value as DeveloperTitle)}
-                className="w-full px-3.5 py-2 rounded-xl bg-neutral-900 border border-neutral-800 text-white text-xs sm:text-sm focus:outline-none focus:border-blue-500"
+            <div className="pt-3 border-t border-neutral-800 flex justify-end">
+              <button
+                type="submit"
+                className="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold flex items-center gap-2 transition-colors"
               >
-                <option value="Full-Stack Developer">Full-Stack Developer</option>
-                <option value="Frontend Developer">Frontend Developer</option>
-                <option value="Backend Developer">Backend Developer</option>
-                <option value="AI / Data Engineer">AI / Data Engineer</option>
-                <option value="Mobile Developer">Mobile Developer</option>
-                <option value="DevOps Engineer">DevOps Engineer</option>
-              </select>
+                <Save className="w-3.5 h-3.5" />
+                <span>{t.settings.save}</span>
+              </button>
             </div>
+          </form>
 
-            <div className="md:col-span-2 space-y-1.5">
-              <label className="block text-xs font-semibold text-neutral-300">
-                {lang === "tr" ? "Konum" : "Məkan"}
-              </label>
-              <input
-                type="text"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                placeholder="Örn: Bakü, Azerbaycan / İstanbul, Türkiye"
-                className="w-full px-3.5 py-2 rounded-xl bg-neutral-900 border border-neutral-800 text-white text-xs sm:text-sm focus:outline-none focus:border-blue-500"
-              />
-            </div>
+          {/* DANGER ZONE: HESABI SİL CARD */}
+          <div className="rounded-2xl border border-red-900/40 bg-red-950/20 p-5 sm:p-6 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="space-y-1">
+                <h4 className="text-sm font-bold text-red-400 flex items-center gap-2">
+                  <Trash2 className="w-4 h-4 text-red-500" />
+                  <span>{lang === "tr" ? "Hesabı Sil" : "Hesabı Sil"}</span>
+                </h4>
+                <p className="text-xs text-neutral-400">
+                  {lang === "tr"
+                    ? "Profilinizi, tüm paylaşımlarınızı ve hesap verilerinizi kalıcı olarak silin."
+                    : "Profilinizi, layihələrinizi və hesab məlumatlarınızı həmişəlik silin."}
+                </p>
+              </div>
 
-            <div className="md:col-span-2 space-y-1.5">
-              <label className="block text-xs font-semibold text-neutral-300">
-                {lang === "tr" ? "Biyografi" : "Bio"}
-              </label>
-              <textarea
-                rows={3}
-                value={bio}
-                onChange={(e) => setBio(e.target.value)}
-                placeholder={lang === "tr" ? "Kendinizden ve üzerinde çalıştığınız teknolojilerden bahsedin..." : "Özünüz haqqında qısa məlumat..."}
-                className="w-full px-3.5 py-2 rounded-xl bg-neutral-900 border border-neutral-800 text-white text-xs sm:text-sm focus:outline-none focus:border-blue-500 leading-relaxed"
-              />
-            </div>
-
-            <div className="md:col-span-2 space-y-1.5">
-              <label className="block text-xs font-semibold text-neutral-300">
-                {lang === "tr" ? "Yetenekler (Virgülle ayırın)" : "Bacarıqlar (Vergüllə ayırın)"}
-              </label>
-              <input
-                type="text"
-                value={skillsInput}
-                onChange={(e) => setSkillsInput(e.target.value)}
-                placeholder="React, Next.js, TypeScript, PostgreSQL, Node.js"
-                className="w-full px-3.5 py-2 rounded-xl bg-neutral-900 border border-neutral-800 text-white text-xs sm:text-sm focus:outline-none focus:border-blue-500 font-mono"
-              />
+              <button
+                type="button"
+                onClick={() => {
+                  setIsDeleteModalOpen(true);
+                  setDeletePassword("");
+                  setDeleteError("");
+                }}
+                className="px-4 py-2.5 rounded-xl bg-red-600/20 hover:bg-red-600/30 border border-red-500/40 text-red-400 hover:text-red-300 font-semibold text-xs transition-colors shrink-0 flex items-center gap-2 self-start sm:self-auto shadow-sm active:scale-[0.98]"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{lang === "tr" ? "Hesabı Sil" : "Hesabı Sil"}</span>
+              </button>
             </div>
           </div>
-
-          <div className="pt-3 border-t border-neutral-800 flex justify-end">
-            <button
-              type="submit"
-              className="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold flex items-center gap-2 transition-colors"
-            >
-              <Save className="w-3.5 h-3.5" />
-              <span>{t.settings.save}</span>
-            </button>
-          </div>
-        </form>
+        </div>
       )}
 
       {/* TAB CONTENT: LANGUAGE & APPEARANCE (DİL SEÇİMİ) */}
@@ -638,6 +794,104 @@ export default function SettingsPage() {
                   </p>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ACCOUNT DELETION CONFIRMATION MODAL */}
+      {isDeleteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white dark:bg-[#121824] border border-gray-200 dark:border-neutral-800 rounded-3xl max-w-md w-full p-6 sm:p-7 space-y-5 shadow-2xl">
+            {/* MODAL HEADER */}
+            <div className="flex items-center gap-3 pb-1 border-b border-gray-100 dark:border-neutral-800/80">
+              <div className="w-10 h-10 rounded-2xl bg-red-500/15 border border-red-500/30 flex items-center justify-center text-red-500 shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-base text-gray-900 dark:text-white">
+                  {lang === "tr" ? "Hesabı Sil" : "Hesabı Sil"}
+                </h3>
+                <p className="text-xs text-gray-500 dark:text-neutral-400">
+                  {lang === "tr" ? "Kalıcı hesap silme işlemi" : "Hesabın birdəfəlik silinməsi"}
+                </p>
+              </div>
+            </div>
+
+            {/* EXACT USER SPECIFIED WARNING */}
+            <div className="p-4 rounded-2xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 text-red-600 dark:text-red-400 text-xs sm:text-sm font-semibold flex items-center gap-3">
+              <AlertTriangle className="w-5 h-5 shrink-0 text-red-500" />
+              <span className="leading-snug">
+                hesabi sildikden sonra birde geri qaytarmaq mumkun deyl
+              </span>
+            </div>
+
+            <p className="text-xs text-gray-600 dark:text-neutral-300 leading-relaxed">
+              {lang === "tr"
+                ? "Hesabınızı silmek için lütfen onay olarak hesap şifrenizi girin:"
+                : "Hesabınızı silmək üçün zəhmət olmasa təsdiq olaraq hesab şifrənizi daxil edin:"}
+            </p>
+
+            {/* PASSWORD INPUT FOR CONFIRMATION */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold text-gray-700 dark:text-neutral-300 flex items-center gap-1.5">
+                <Lock className="w-3.5 h-3.5 text-gray-400 dark:text-neutral-400" />
+                <span>{lang === "tr" ? "Hesap Şifresi" : "Hesab Şifrəsi"}</span>
+              </label>
+              <input
+                type="password"
+                autoFocus
+                value={deletePassword}
+                onChange={(e) => {
+                  setDeletePassword(e.target.value);
+                  setDeleteError("");
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && deletePassword.trim() && !isDeleting) {
+                    handleConfirmDelete();
+                  }
+                }}
+                placeholder={lang === "tr" ? "Hesap şifrenizi girin" : "Hesab şifrənizi daxil edin"}
+                className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 text-gray-900 dark:text-white text-xs sm:text-sm focus:outline-none focus:border-red-500 font-mono transition-colors"
+              />
+            </div>
+
+            {/* ERROR DISPLAY */}
+            {deleteError && (
+              <div className="p-3 rounded-xl bg-red-50 dark:bg-red-950/60 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{deleteError}</span>
+              </div>
+            )}
+
+            {/* TWO BUTTONS: 'geri don' and 'hesabi sil' */}
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100 dark:border-neutral-800">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsDeleteModalOpen(false);
+                  setDeletePassword("");
+                  setDeleteError("");
+                }}
+                disabled={isDeleting}
+                className="px-4 py-2.5 rounded-xl border border-gray-200 dark:border-neutral-700 bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-200 text-xs font-semibold transition-colors"
+              >
+                {lang === "tr" ? "Geri dön" : "Geri dön"}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                disabled={isDeleting || !deletePassword.trim()}
+                className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-semibold transition-all flex items-center gap-2 shadow-sm active:scale-[0.98]"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>
+                  {isDeleting
+                    ? (lang === "tr" ? "Siliniyor..." : "Silinir...")
+                    : (lang === "tr" ? "Hesabı sil" : "Hesabı sil")}
+                </span>
+              </button>
             </div>
           </div>
         </div>

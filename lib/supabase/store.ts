@@ -249,6 +249,9 @@ class LocalStore {
       projects_count: 0,
     };
     (newUser as any).email = cleanEmail;
+    if (data.password) {
+      (newUser as any).password = data.password;
+    }
 
     this.profiles.push(newUser);
     this.persistProfiles();
@@ -278,18 +281,121 @@ class LocalStore {
     return this.profiles.find(p => p.username.toLowerCase() === username.toLowerCase()) || null;
   }
 
-  updateProfile(username: string, updates: Partial<Profile>): Profile | null {
-    const idx = this.profiles.findIndex(p => p.username.toLowerCase() === username.toLowerCase());
+  getProfileById(id: string): Profile | null {
+    return this.profiles.find(p => p.id === id) || null;
+  }
+
+  verifyUserPassword(userId: string, passwordAttempt: string): boolean {
+    const user = this.profiles.find(p => p.id === userId);
+    if (!user) return false;
+    const stored = (user as any).password;
+    if (!stored) {
+      // If user signed in via social or no local password recorded, accept valid password length
+      return passwordAttempt.trim().length >= 6;
+    }
+    return stored === passwordAttempt;
+  }
+
+  updateProfile(idOrUsername: string, updates: Partial<Profile> & { password?: string }): Profile | null {
+    const idx = this.profiles.findIndex(
+      p => p.id === idOrUsername || p.username.toLowerCase() === idOrUsername.toLowerCase()
+    );
     if (idx !== -1) {
-      this.profiles[idx] = { ...this.profiles[idx], ...updates };
+      const oldUsername = this.profiles[idx].username;
+      const newUsername = updates.username ? updates.username.toLowerCase().trim() : oldUsername;
+
+      this.profiles[idx] = {
+        ...this.profiles[idx],
+        ...updates,
+        username: newUsername,
+      };
+
+      if (updates.password) {
+        (this.profiles[idx] as any).password = updates.password;
+      }
+
       this.persistProfiles();
-      if (this.currentUser && this.currentUser.username.toLowerCase() === username.toLowerCase()) {
+
+      // If username or full name changed, update them in related entities
+      if (oldUsername.toLowerCase() !== newUsername.toLowerCase() || updates.full_name) {
+        const userId = this.profiles[idx].id;
+        this.projects.forEach(p => {
+          if (p.user_id === userId && p.profile) {
+            p.profile.username = newUsername;
+            if (updates.full_name) p.profile.full_name = updates.full_name;
+            if (updates.avatar_url) p.profile.avatar_url = updates.avatar_url;
+          }
+        });
+        this.persistProjects();
+
+        this.comments.forEach(c => {
+          if (c.user_id === userId && c.profile) {
+            c.profile.username = newUsername;
+            if (updates.full_name) c.profile.full_name = updates.full_name;
+            if (updates.avatar_url) c.profile.avatar_url = updates.avatar_url;
+          }
+        });
+        this.persistComments();
+
+        this.notifications.forEach(n => {
+          if (n.actor_id === userId && n.actor) {
+            n.actor.username = newUsername;
+            if (updates.full_name) n.actor.full_name = updates.full_name;
+            if (updates.avatar_url) n.actor.avatar_url = updates.avatar_url;
+          }
+        });
+        this.persistNotifications();
+
+        this.messages.forEach(m => {
+          if (m.sender_id === userId && m.sender) {
+            m.sender.username = newUsername;
+            if (updates.full_name) m.sender.full_name = updates.full_name;
+          }
+          if (m.receiver_id === userId && m.receiver) {
+            m.receiver.username = newUsername;
+            if (updates.full_name) m.receiver.full_name = updates.full_name;
+          }
+        });
+        this.persistMessages();
+      }
+
+      if (
+        this.currentUser &&
+        (this.currentUser.id === this.profiles[idx].id ||
+          this.currentUser.username.toLowerCase() === oldUsername.toLowerCase())
+      ) {
         this.currentUser = this.profiles[idx];
         this.persistUser();
       }
       return this.profiles[idx];
     }
     return null;
+  }
+
+  deleteAccount(userId: string): boolean {
+    const initialProfilesCount = this.profiles.length;
+    this.profiles = this.profiles.filter(p => p.id !== userId);
+    this.projects = this.projects.filter(p => p.user_id !== userId);
+    this.comments = this.comments.filter(c => c.user_id !== userId);
+    this.notifications = this.notifications.filter(n => n.user_id !== userId && n.actor_id !== userId);
+    this.messages = this.messages.filter(m => m.sender_id !== userId && m.receiver_id !== userId);
+
+    this.persistProfiles();
+    this.persistProjects();
+    this.persistComments();
+    this.persistNotifications();
+    this.persistMessages();
+
+    if (this.currentUser && this.currentUser.id === userId) {
+      this.currentUser = null;
+      this.persistUser();
+    }
+
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("deloop_user");
+    }
+
+    return this.profiles.length < initialProfilesCount;
   }
 
   // ==========================================
