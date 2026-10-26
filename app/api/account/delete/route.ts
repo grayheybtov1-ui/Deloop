@@ -20,6 +20,19 @@ export async function POST(req: Request) {
       const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
         auth: { autoRefreshToken: false, persistSession: false },
       });
+      // Verify the caller is the account owner
+      const authHeader = req.headers.get("authorization") || "";
+      const token = authHeader.toLowerCase().startsWith("bearer ") ? authHeader.slice(7).trim() : "";
+      if (!token) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+      const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token);
+      if (userError || !userData?.user) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+      if (userData.user.id !== userId) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
       // Delete user from auth.users (cascades to all user tables)
       await supabaseAdmin.auth.admin.deleteUser(userId);
     }

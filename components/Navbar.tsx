@@ -189,7 +189,7 @@ export function Navbar({ onToggleMobileSidebar, isMobileSidebarOpen }: NavbarPro
               pathname.startsWith("/messages") ? "bg-blue-50 text-blue-600" : ""
             }`}
           >
-            <Send className="w-4.5 h-4.5" />
+            <Send className="w-[18px] h-[18px]" />
             {unreadMessages > 0 && (
               <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-bold flex items-center justify-center">
                 {unreadMessages}
@@ -205,7 +205,7 @@ export function Navbar({ onToggleMobileSidebar, isMobileSidebarOpen }: NavbarPro
               pathname.startsWith("/notifications") ? "bg-blue-50 text-blue-600" : ""
             }`}
           >
-            <Bell className="w-4.5 h-4.5" />
+            <Bell className="w-[18px] h-[18px]" />
             {unreadNotifs > 0 && (
               <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center">
                 {unreadNotifs}

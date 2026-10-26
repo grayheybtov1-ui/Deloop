@@ -140,7 +140,7 @@ CREATE POLICY "Users can follow/unfollow" ON public.follows FOR ALL USING (auth.
 DROP POLICY IF EXISTS "Users can view own notifications" ON public.notifications;
 CREATE POLICY "Users can view own notifications" ON public.notifications FOR SELECT USING (auth.uid() = user_id);
 DROP POLICY IF EXISTS "System can create notifications" ON public.notifications;
-CREATE POLICY "System can create notifications" ON public.notifications FOR INSERT WITH CHECK (true);
+CREATE POLICY "System can create notifications" ON public.notifications FOR INSERT WITH CHECK (auth.uid() = actor_id);
 DROP POLICY IF EXISTS "Users can update own notifications" ON public.notifications;
 CREATE POLICY "Users can update own notifications" ON public.notifications FOR UPDATE USING (auth.uid() = user_id);
 
@@ -149,6 +149,8 @@ DROP POLICY IF EXISTS "Users can view own direct messages" ON public.messages;
 CREATE POLICY "Users can view own direct messages" ON public.messages FOR SELECT USING (auth.uid() = sender_id OR auth.uid() = receiver_id);
 DROP POLICY IF EXISTS "Users can send direct messages" ON public.messages;
 CREATE POLICY "Users can send direct messages" ON public.messages FOR INSERT WITH CHECK (auth.uid() = sender_id);
+DROP POLICY IF EXISTS "Receivers can mark messages as read" ON public.messages;
+CREATE POLICY "Receivers can mark messages as read" ON public.messages FOR UPDATE USING (auth.uid() = receiver_id);
 
 -- ============================================================
 -- TRIGGER: Auto-create profile on signup
@@ -194,3 +196,20 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- ============================================================
 -- UPDATE public.profiles SET role = 'admin' WHERE username = 'your_username';
 
+
+
+-- Prevent users from promoting themselves to admin via the API
+CREATE OR REPLACE FUNCTION public.prevent_role_escalation()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.role IS DISTINCT FROM OLD.role AND auth.uid() IS NOT NULL THEN
+    NEW.role := OLD.role;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS profiles_prevent_role_escalation ON public.profiles;
+CREATE TRIGGER profiles_prevent_role_escalation
+  BEFORE UPDATE ON public.profiles
+  FOR EACH ROW EXECUTE FUNCTION public.prevent_role_escalation();

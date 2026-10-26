@@ -14,7 +14,14 @@ export default function DevelopersPage() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSkill, setSelectedSkill] = useState("Tümü");
-  const lang: Language = getSavedLanguage();
+  const [lang, setLang] = useState<Language>("tr");
+
+  useEffect(() => {
+    setLang(getSavedLanguage());
+    const handleLang = () => setLang(getSavedLanguage());
+    window.addEventListener("deloop_lang_changed", handleLang);
+    return () => window.removeEventListener("deloop_lang_changed", handleLang);
+  }, []);
 
   useEffect(() => {
     async function fetchProfiles() {

@@ -105,7 +105,7 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ id: s
       const res = await dbToggleLike(project.id);
       setHasLiked(res.liked);
       setLikesCount(res.count);
-      localStore.toggleLike(project.id);
+      try { localStore.toggleLike(project.id); } catch { /* local cache sync is best-effort */ }
       showToast(res.liked ? "Liked!" : "Unliked", undefined, "success");
     } catch {
       const res = localStore.toggleLike(project.id);
@@ -118,7 +118,7 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ id: s
   const handleDelete = async () => {
     try {
       await dbDeleteProject(project.id);
-      localStore.deleteProject(project.id);
+      try { localStore.deleteProject(project.id); } catch { /* local cache sync is best-effort */ }
     } catch {
       localStore.deleteProject(project.id);
     }

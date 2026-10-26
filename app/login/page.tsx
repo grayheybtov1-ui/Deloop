@@ -16,7 +16,14 @@ function AuthPortalContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { showToast } = useToast();
-  const lang: Language = getSavedLanguage();
+  const [lang, setLang] = useState<Language>("tr");
+
+  useEffect(() => {
+    setLang(getSavedLanguage());
+    const handleLang = () => setLang(getSavedLanguage());
+    window.addEventListener("deloop_lang_changed", handleLang);
+    return () => window.removeEventListener("deloop_lang_changed", handleLang);
+  }, []);
 
   // Mode: "signin" or "signup"
   const initialTab = searchParams.get("tab") === "signup" ? "signup" : "signin";

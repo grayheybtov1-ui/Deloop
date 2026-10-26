@@ -1,6 +1,6 @@
-# 🚀 DevHub - Professional Full-Stack Developer Platforması
+# 🚀 Deloop - Professional Full-Stack Developer Platforması
 
-**DevHub** proqramçılar üçün professional Full-Stack portfolio, layihə paylaşım platforması və developer şəbəkəsidir (GitHub + Portfolio + Developer Network).
+**Deloop** proqramçılar üçün professional Full-Stack portfolio, layihə paylaşım platforması və developer şəbəkəsidir (GitHub + Portfolio + Developer Network).
 
 Bu layihə Full-Stack kursunun final işi üçün hazırlanmışdır və generic AI template hissiyyatından uzaq, real developer təcrübəsinə uyğun, kod strukturu aydın və izahı asan şəkildə qurulmuşdur.
 
@@ -8,7 +8,7 @@ Bu layihə Full-Stack kursunun final işi üçün hazırlanmışdır və generic
 
 ## 📋 1. LAYİHƏNİN MƏQSƏDİ
 
-DevHub proqramçılara aşağıdakı imkanları təqdim edir:
+Deloop proqramçılara aşağıdakı imkanları təqdim edir:
 - **Professional Profil:** Öz texnoloji bacarıqlarını, bio, məkan və sosial keçidlərini təqdim etmək.
 - **GitHub Inteqrasiyası:** GitHub istifadəçi adı vasitəsilə canlı repozitoriyaları, ulduzları və dillər üzrə statistikanı göstərmək.
 - **Full-Stack Layihə İdarəetməsi (CRUD):** Layihə yaradılması, redaktə olunması, silinməsi və statuslarının (Completed, In Progress, Planning) təyini.
@@ -174,5 +174,3 @@ Müəllim qarşısında kodları göstərərkən bu cümlələrdən istifadə ed
 3. **Database:** *"Database kimi Supabase PostgreSQL istifadə etmişəm. Cədvəllər arasında Foreign Key ilişkisi var. `schema.sql` faylında RLS polisilərini və avtomatik trigger funksiyasını hazırlamışam."*
 4. **API:** *"GitHub inteqrasiyasını `lib/github.ts` daxilində yazmışam. Server-side API Handler istifadə edərək GitHub-dan repozitoriyaları və dilləri çəkirəm."*
 5. **UX:** *"İstifadəçiyə dərhal rəy vermək üçün Toast bildirişləri, silinmə confirmation modalı və yüklənmə vaxtı Skeleton loader-lər əlavə etmişəm."*
-#   D e l o o p  
- 

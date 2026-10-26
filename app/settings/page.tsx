@@ -23,7 +23,7 @@ import {
 
 import { Profile, DeveloperTitle } from "@/types";
 import { localStore } from "@/lib/supabase/store";
-import { dbUpdateProfile, dbDeleteAccount, dbUpdatePassword } from "@/lib/supabase/db";
+import { dbUpdateProfile, dbDeleteAccount, dbUpdatePassword, dbGetCurrentSession } from "@/lib/supabase/db";
 import { supabase } from "@/lib/supabase/client";
 import { useToast } from "@/components/Toast";
 import { getSavedLanguage, setSavedLanguage, translations, Language } from "@/lib/i18n";
@@ -218,13 +218,17 @@ export default function SettingsPage() {
       return;
     }
 
-    try {
-      await dbUpdatePassword(newPassword);
-    } catch {
-      // ignore
-    }
-
-    if (user) {
+    const session = await dbGetCurrentSession().catch(() => null);
+    if (session) {
+      // Supabase account: password lives only in Supabase Auth
+      try {
+        await dbUpdatePassword(newPassword);
+      } catch (err: any) {
+        showToast(err?.message || (lang === "tr" ? "Şifre güncellenemedi" : "Şifrə yenilənmədi"), undefined, "error");
+        return;
+      }
+    } else if (user) {
+      // Local-only account
       localStore.updateProfile(user.id, { password: newPassword });
     }
 
