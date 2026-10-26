@@ -96,7 +96,7 @@ function MessagesContent() {
     try {
       const sent = await dbSendMessage(selectedUser.id, content);
       setMessages((prev) => [...prev, sent]);
-      localStore.sendMessage(selectedUser.id, content);
+      try { localStore.sendMessage(selectedUser.id, content); } catch { /* local cache sync is best-effort */ }
     } catch {
       const sent = localStore.sendMessage(selectedUser.id, content);
       setMessages((prev) => [...prev, sent]);
@@ -112,7 +112,7 @@ function MessagesContent() {
   );
 
   return (
-    <div className="h-[calc(100vh-8.5rem)] max-w-5xl mx-auto rounded-2xl border border-neutral-800 overflow-hidden flex flex-col md:flex-row bg-black">
+    <div className="h-[calc(100dvh-8.5rem)] max-w-5xl mx-auto rounded-2xl border border-neutral-800 overflow-hidden flex flex-col md:flex-row bg-black">
       
       {/* 1. LEFT COLUMN — CHAT LIST */}
       <div className={`w-full md:w-80 lg:w-96 border-r border-neutral-800 flex flex-col bg-black ${
@@ -241,8 +241,8 @@ function MessagesContent() {
                       <div
                         className={`max-w-md px-3.5 py-2 rounded-2xl text-xs sm:text-sm ${
                           isMe
-                            ? "bg-blue-600 text-white rounded-br-xs"
-                            : "bg-neutral-900 text-neutral-200 rounded-bl-xs border border-neutral-800"
+                            ? "bg-blue-600 text-white rounded-br-sm"
+                            : "bg-neutral-900 text-neutral-200 rounded-bl-sm border border-neutral-800"
                         }`}
                       >
                         <p className="leading-relaxed whitespace-pre-wrap">{m.content}</p>

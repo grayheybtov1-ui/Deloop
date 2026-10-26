@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Lock, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/components/Toast";
 import { DeloopLogo } from "@/components/DeloopLogo";
+import { dbUpdatePassword } from "@/lib/supabase/db";
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -14,7 +15,7 @@ export default function ResetPasswordPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
@@ -25,6 +26,13 @@ export default function ResetPasswordPage() {
 
     if (password !== confirmPassword) {
       setError("Passwords do not match.");
+      return;
+    }
+
+    try {
+      await dbUpdatePassword(password);
+    } catch (err: any) {
+      setError(err?.message || "Could not update password. The reset link may have expired.");
       return;
     }
 

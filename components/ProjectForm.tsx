@@ -66,12 +66,12 @@ export function ProjectForm({ initialData, isEditing = false }: ProjectFormProps
     try {
       if (isEditing && initialData) {
         await dbUpdateProject(initialData.id, payload);
-        localStore.updateProject(initialData.id, payload);
+        try { localStore.updateProject(initialData.id, payload); } catch { /* local cache sync is best-effort */ }
         showToast(lang === "tr" ? "Proje Güncellendi" : "Layihə Yeniləndi", `"${title}"`, "success");
         router.push(`/projects/${initialData.id}`);
       } else {
         const created = await dbCreateProject(payload);
-        localStore.createProject(payload);
+        try { localStore.createProject(payload); } catch { /* local cache sync is best-effort */ }
         showToast(lang === "tr" ? "Proje Paylaşıldı" : "Layihə Paylaşıldı", `"${title}"`, "success");
         router.push(`/projects/${created.id}`);
       }

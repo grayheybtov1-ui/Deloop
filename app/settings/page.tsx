@@ -23,7 +23,7 @@ import {
 
 import { Profile, DeveloperTitle } from "@/types";
 import { localStore } from "@/lib/supabase/store";
-import { dbUpdateProfile, dbDeleteAccount, dbUpdatePassword } from "@/lib/supabase/db";
+import { dbUpdateProfile, dbDeleteAccount, dbUpdatePassword, dbGetCurrentSession } from "@/lib/supabase/db";
 import { supabase } from "@/lib/supabase/client";
 import { useToast } from "@/components/Toast";
 import { getSavedLanguage, setSavedLanguage, translations, Language } from "@/lib/i18n";
@@ -218,13 +218,17 @@ export default function SettingsPage() {
       return;
     }
 
-    try {
-      await dbUpdatePassword(newPassword);
-    } catch {
-      // ignore
-    }
-
-    if (user) {
+    const session = await dbGetCurrentSession().catch(() => null);
+    if (session) {
+      // Supabase account: password lives only in Supabase Auth
+      try {
+        await dbUpdatePassword(newPassword);
+      } catch (err: any) {
+        showToast(err?.message || (lang === "tr" ? "Şifre güncellenemedi" : "Şifrə yenilənmədi"), undefined, "error");
+        return;
+      }
+    } else if (user) {
+      // Local-only account
       localStore.updateProfile(user.id, { password: newPassword });
     }
 
@@ -802,7 +806,7 @@ export default function SettingsPage() {
       {/* ACCOUNT DELETION CONFIRMATION MODAL */}
       {isDeleteModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white dark:bg-[#121824] border border-gray-200 dark:border-neutral-800 rounded-3xl max-w-md w-full p-6 sm:p-7 space-y-5 shadow-2xl">
+          <div className="bg-white dark:bg-[#121824] border border-gray-200 dark:border-neutral-800 rounded-3xl max-w-md w-full max-h-[90dvh] overflow-y-auto p-6 sm:p-7 space-y-5 shadow-2xl">
             {/* MODAL HEADER */}
             <div className="flex items-center gap-3 pb-1 border-b border-gray-100 dark:border-neutral-800/80">
               <div className="w-10 h-10 rounded-2xl bg-red-500/15 border border-red-500/30 flex items-center justify-center text-red-500 shrink-0">

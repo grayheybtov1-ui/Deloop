@@ -50,7 +50,7 @@ export function ProjectCard({ project: initialProject }: ProjectCardProps) {
       const result = await dbToggleLike(project.id);
       setHasLiked(result.liked);
       setLikesCount(result.count);
-      localStore.toggleLike(project.id); // sync local cache
+      try { localStore.toggleLike(project.id); } catch { /* local cache sync is best-effort */ }
       if (result.liked) {
         showToast("❤️ Beğenildi", `"${project.title}"`, "success");
       }
@@ -80,7 +80,7 @@ export function ProjectCard({ project: initialProject }: ProjectCardProps) {
 
     try {
       await dbAddComment(project.id, text);
-      localStore.addComment(project.id, text); // sync cache
+      try { localStore.addComment(project.id, text); } catch { /* local cache sync is best-effort */ }
       showToast("💬 Yorum eklendi", "", "success");
     } catch {
       localStore.addComment(project.id, text);

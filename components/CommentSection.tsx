@@ -41,7 +41,7 @@ export function CommentSection({ projectId }: CommentSectionProps) {
     try {
       const added = await dbAddComment(projectId, text);
       setComments((prev) => [...prev, added]);
-      localStore.addComment(projectId, text);
+      try { localStore.addComment(projectId, text); } catch { /* local cache sync is best-effort */ }
       showToast("Comment Added", "Your feedback was published to the project.", "success");
     } catch {
       const added = localStore.addComment(projectId, text);

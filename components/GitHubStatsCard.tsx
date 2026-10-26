@@ -21,7 +21,23 @@ export function GitHubStatsCard({ githubUsername }: GitHubStatsCardProps) {
         return;
       }
       setLoading(true);
-      const res = await fetchGitHubUserStats(githubUsername);
+      let res: GitHubUserStats | null = null;
+      try {
+        const r = await fetch(`/api/github?username=${encodeURIComponent(githubUsername)}`);
+        if (r.ok) {
+          const json = await r.json();
+          res = json.data ?? null;
+        }
+      } catch {
+        res = null;
+      }
+      if (!res) {
+        try {
+          res = await fetchGitHubUserStats(githubUsername);
+        } catch {
+          res = null;
+        }
+      }
       setStats(res);
       setLoading(false);
     }

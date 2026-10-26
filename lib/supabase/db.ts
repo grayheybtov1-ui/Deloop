@@ -141,14 +141,25 @@ export async function dbDeleteAccount(userId: string, password: string): Promise
     await supabase.from("profiles").delete().eq("id", userId);
     
     // Call RPC if registered in Postgres
-    await supabase.rpc("delete_user_account").catch(() => null);
+    try {
+      await supabase.rpc("delete_user_account");
+    } catch {
+      // ignore
+    }
 
-    // Call server API route
-    await fetch("/api/account/delete", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId, password }),
-    }).catch(() => null);
+    // Call server API route (sends the session token so the server can verify the caller)
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    const accessToken = session?.access_token;
+    if (accessToken) headers["Authorization"] = `Bearer ${accessToken}`;
+    try {
+      await fetch("/api/account/delete", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ userId }),
+      });
+    } catch {
+      // ignore
+    }
   } catch (err) {
     console.warn("Supabase cascade deletion notice:", err);
   }

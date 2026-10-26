@@ -16,7 +16,14 @@ function AuthPortalContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { showToast } = useToast();
-  const lang: Language = getSavedLanguage();
+  const [lang, setLang] = useState<Language>("tr");
+
+  useEffect(() => {
+    setLang(getSavedLanguage());
+    const handleLang = () => setLang(getSavedLanguage());
+    window.addEventListener("deloop_lang_changed", handleLang);
+    return () => window.removeEventListener("deloop_lang_changed", handleLang);
+  }, []);
 
   // Mode: "signin" or "signup"
   const initialTab = searchParams.get("tab") === "signup" ? "signup" : "signin";
@@ -476,7 +483,7 @@ function AuthPortalContent() {
       {/* GOOGLE DIRECT PROMPT MODAL (Fallback for quick Google authentication) */}
       {googleModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white dark:bg-[#121824] border border-gray-200 dark:border-gray-800 rounded-2xl max-w-sm w-full p-6 space-y-4 shadow-2xl">
+          <div className="bg-white dark:bg-[#121824] border border-gray-200 dark:border-gray-800 rounded-2xl max-w-sm w-full max-h-[90dvh] overflow-y-auto p-6 space-y-4 shadow-2xl">
             <div className="flex items-center gap-2.5 pb-2 border-b border-gray-100 dark:border-gray-800">
               <svg
                 className="w-5 h-5 shrink-0"

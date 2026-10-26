@@ -36,7 +36,7 @@ export function DeveloperCard({ profile: initialProfile }: DeveloperCardProps) {
     try {
       const res = await dbToggleFollow(profile.id);
       setIsFollowing(res.following);
-      localStore.toggleFollow(profile.id);
+      try { localStore.toggleFollow(profile.id); } catch { /* local cache sync is best-effort */ }
       showToast(
         res.following ? `@${profile.username} ${lang === "tr" ? "takip ediliyor" : "təqib edilir"}` : `@${profile.username}`,
         undefined,
