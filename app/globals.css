@@ -115,3 +115,23 @@ button:active, a:active {
 .like-overlay-heart {
   animation: likeHeartPop 0.9s ease-out forwards;
 }
+
+/* ===========================
+   MOBILE
+   =========================== */
+@media (max-width: 767px) {
+  /* iOS Safari zooms into inputs with font-size < 16px */
+  input:not([type="checkbox"]):not([type="radio"]),
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
+img, video {
+  max-width: 100%;
+}
+
+p, h1, h2, h3, h4 {
+  overflow-wrap: anywhere;
+}

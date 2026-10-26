@@ -133,7 +133,7 @@ export function Navbar({ onToggleMobileSidebar, isMobileSidebarOpen }: NavbarPro
       <div className="h-full max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between gap-3">
 
         {/* LEFT: MOBILE TOGGLE & BRAND */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <button
             onClick={onToggleMobileSidebar}
             className="lg:hidden p-2 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100 border border-gray-200 dark:border-gray-800 transition-colors"
@@ -145,7 +145,7 @@ export function Navbar({ onToggleMobileSidebar, isMobileSidebarOpen }: NavbarPro
           <Link href="/projects" className="flex items-center gap-2.5 no-underline group select-none">
             <DeloopLogo variant="app" size="md" />
             <div className="flex items-baseline gap-1.5">
-              <span className="font-extrabold text-lg tracking-tight text-gray-900 dark:text-white group-hover:text-blue-600 transition-colors">
+              <span className="max-[400px]:hidden font-extrabold text-lg tracking-tight text-gray-900 dark:text-white group-hover:text-blue-600 transition-colors">
                 Deloop
               </span>
               <span className="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 hidden sm:inline-block">
@@ -170,7 +170,7 @@ export function Navbar({ onToggleMobileSidebar, isMobileSidebarOpen }: NavbarPro
         </div>
 
         {/* RIGHT: ACTIONS */}
-        <div className="flex items-center gap-2 sm:gap-2.5">
+        <div className="flex items-center gap-1 sm:gap-2.5 shrink-0">
 
           {/* NEW PROJECT BUTTON */}
           <Link

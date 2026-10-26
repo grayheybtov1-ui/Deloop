@@ -89,13 +89,13 @@ export function AppShell({ children }: AppShellProps) {
 
       {/* MAIN CONTENT */}
       <div className="flex-1 lg:pl-64 pt-16 flex flex-col min-w-0 transition-all">
-        <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-20 lg:pb-10">
+        <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-[calc(5rem+env(safe-area-inset-bottom,0px))] lg:pb-10">
           {children}
         </main>
       </div>
 
       {/* MOBILE BOTTOM NAVIGATION */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 h-14 bg-white border-t border-gray-200 px-2 pb-[env(safe-area-inset-bottom,0px)] flex items-center justify-around shadow-sm">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 h-[calc(3.5rem+env(safe-area-inset-bottom,0px))] bg-white dark:bg-[#0b0f17] border-t border-gray-200 dark:border-gray-800 px-2 pb-[env(safe-area-inset-bottom,0px)] flex items-center justify-around shadow-sm">
         {mobileBottomNavItems.map(({ href, icon: Icon, label, badge, isAvatar, isAction }) => {
           const isActive =
             pathname === href ||
