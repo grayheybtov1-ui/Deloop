@@ -13,12 +13,13 @@ import {
   Eye, 
   Calendar, 
   Terminal,
-  Share2
+  Share2,
+  Bookmark
 } from "lucide-react";
 
 import { Project, Profile } from "@/types";
 import { localStore } from "@/lib/supabase/store";
-import { dbGetProjectById, dbToggleLike, dbDeleteProject } from "@/lib/supabase/db";
+import { dbGetProjectById, dbToggleLike, dbDeleteProject, dbToggleBookmark, dbIsBookmarked } from "@/lib/supabase/db";
 import { TechBadge } from "@/components/TechBadge";
 import { CommentSection } from "@/components/CommentSection";
 import { Modal } from "@/components/Modal";
@@ -35,13 +36,18 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ id: s
   const [currentUser, setCurrentUser] = useState<Profile | null>(null);
   const [hasLiked, setHasLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(0);
+  const [isSaved, setIsSaved] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchProject() {
       try {
-        const proj = await dbGetProjectById(id);
+        const [proj, bookmarked] = await Promise.all([
+          dbGetProjectById(id),
+          dbIsBookmarked(id),
+        ]);
+        setIsSaved(bookmarked);
         if (proj) {
           setProject(proj);
           setHasLiked(!!proj.user_has_liked);
@@ -52,6 +58,7 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ id: s
             setProject(fallback);
             setHasLiked(!!fallback.user_has_liked);
             setLikesCount(fallback.likes_count || 0);
+            setIsSaved(localStore.isBookmarked(id));
           }
         }
       } catch {
@@ -60,6 +67,7 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ id: s
           setProject(fallback);
           setHasLiked(!!fallback.user_has_liked);
           setLikesCount(fallback.likes_count || 0);
+          setIsSaved(localStore.isBookmarked(id));
         }
       } finally {
         setCurrentUser(localStore.getCurrentUser());
@@ -130,6 +138,27 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ id: s
     if (navigator.clipboard) {
       navigator.clipboard.writeText(window.location.href);
       showToast("Link Copied", "Project URL copied to clipboard.", "info");
+    }
+  };
+
+  const handleBookmarkToggle = async () => {
+    if (!project) return;
+    try {
+      const nextSaved = await dbToggleBookmark(project.id);
+      setIsSaved(nextSaved);
+      showToast(
+        nextSaved ? "Project Saved" : "Project Removed from Saved",
+        `"${project.title}"`,
+        "info"
+      );
+    } catch {
+      const nextSaved = localStore.toggleBookmark(project.id);
+      setIsSaved(nextSaved);
+      showToast(
+        nextSaved ? "Project Saved" : "Project Removed from Saved",
+        `"${project.title}"`,
+        "info"
+      );
     }
   };
 
@@ -268,6 +297,19 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ id: s
                 title="Share link"
               >
                 <Share2 className="w-4 h-4" />
+              </button>
+
+              <button
+                onClick={handleBookmarkToggle}
+                className={`p-2.5 rounded-xl border transition-colors flex items-center gap-1.5 text-xs font-semibold ${
+                  isSaved
+                    ? "bg-blue-600/15 text-blue-500 border-blue-500/30 font-bold"
+                    : "bg-slate-900 text-slate-400 hover:text-slate-200 border-Deloop-border"
+                }`}
+                title={isSaved ? "Saved" : "Save project"}
+              >
+                <Bookmark className={`w-4 h-4 ${isSaved ? "fill-blue-500 text-blue-500" : ""}`} />
+                <span className="hidden sm:inline">{isSaved ? "Saved" : "Save"}</span>
               </button>
             </div>
 

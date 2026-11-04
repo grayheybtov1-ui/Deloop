@@ -168,7 +168,7 @@ export default function DeveloperProfilePage({ params }: { params: Promise<{ use
             
             {/* USERNAME & BUTTONS ROW */}
             <div className="flex flex-col sm:flex-row items-center gap-3">
-              <h1 className="text-xl sm:text-2xl font-normal text-white">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
                 @{profile.username}
               </h1>
 
@@ -176,7 +176,7 @@ export default function DeveloperProfilePage({ params }: { params: Promise<{ use
                 {isSelf ? (
                   <Link
                     href="/settings"
-                    className="px-4 py-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-neutral-200 text-xs font-semibold border border-neutral-800 flex items-center gap-1.5 transition-colors"
+                    className="px-4 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-neutral-900 dark:hover:bg-neutral-800 text-gray-800 dark:text-neutral-200 text-xs font-semibold border border-gray-200 dark:border-neutral-800 flex items-center gap-1.5 transition-colors"
                   >
                     <Settings className="w-3.5 h-3.5" />
                     <span>{t.profile.editProfile}</span>
@@ -187,7 +187,7 @@ export default function DeveloperProfilePage({ params }: { params: Promise<{ use
                       onClick={handleFollowToggle}
                       className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                         isFollowing
-                          ? "bg-neutral-900 text-neutral-300 hover:bg-neutral-800 border border-neutral-800"
+                          ? "bg-gray-100 dark:bg-neutral-900 text-gray-700 dark:text-neutral-300 hover:bg-gray-200 dark:hover:bg-neutral-800 border border-gray-200 dark:border-neutral-800"
                           : "bg-blue-600 hover:bg-blue-500 text-white"
                       }`}
                     >
@@ -196,7 +196,7 @@ export default function DeveloperProfilePage({ params }: { params: Promise<{ use
 
                     <button
                       onClick={handleOpenDM}
-                      className="px-3.5 py-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-neutral-200 text-xs font-semibold border border-neutral-800 flex items-center gap-1.5 transition-colors"
+                      className="px-3.5 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-neutral-900 dark:hover:bg-neutral-800 text-gray-800 dark:text-neutral-200 text-xs font-semibold border border-gray-200 dark:border-neutral-800 flex items-center gap-1.5 transition-colors"
                     >
                       <Send className="w-3.5 h-3.5" />
                       <span>{t.profile.directMessage}</span>
@@ -209,33 +209,33 @@ export default function DeveloperProfilePage({ params }: { params: Promise<{ use
             {/* METRICS ROW: POSTS, FOLLOWERS, FOLLOWING */}
             <div className="flex items-center justify-center sm:justify-start gap-8 py-1 text-sm">
               <div>
-                <span className="font-semibold text-white mr-1.5">{projects.length}</span>
-                <span className="text-neutral-400">{t.profile.posts}</span>
+                <span className="font-semibold text-gray-900 dark:text-white mr-1.5">{projects.length}</span>
+                <span className="text-gray-500 dark:text-neutral-400">{t.profile.posts}</span>
               </div>
               <div>
-                <span className="font-semibold text-white mr-1.5">{profile.followers_count || 0}</span>
-                <span className="text-neutral-400">{t.profile.followers}</span>
+                <span className="font-semibold text-gray-900 dark:text-white mr-1.5">{profile.followers_count || 0}</span>
+                <span className="text-gray-500 dark:text-neutral-400">{t.profile.followers}</span>
               </div>
               <div>
-                <span className="font-semibold text-white mr-1.5">{profile.following_count || 0}</span>
-                <span className="text-neutral-400">{t.profile.followingCount}</span>
+                <span className="font-semibold text-gray-900 dark:text-white mr-1.5">{profile.following_count || 0}</span>
+                <span className="text-gray-500 dark:text-neutral-400">{t.profile.followingCount}</span>
               </div>
             </div>
 
             {/* BIO & METADATA */}
             <div className="space-y-1.5 text-sm">
-              <h2 className="font-semibold text-white">{profile.full_name}</h2>
+              <h2 className="font-semibold text-gray-900 dark:text-white">{profile.full_name}</h2>
               {profile.developer_title && (
-                <p className="text-neutral-400 text-xs font-mono">{profile.developer_title}</p>
+                <p className="text-gray-500 dark:text-neutral-400 text-xs font-mono">{profile.developer_title}</p>
               )}
               {profile.bio && (
-                <p className="text-neutral-300 text-xs sm:text-sm leading-relaxed max-w-xl whitespace-pre-line pt-0.5">
+                <p className="text-gray-700 dark:text-neutral-300 text-xs sm:text-sm leading-relaxed max-w-xl whitespace-pre-line pt-0.5">
                   {profile.bio}
                 </p>
               )}
 
               {/* SOCIAL & WEBSITE LINKS */}
-              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 pt-2 text-xs text-neutral-400">
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 pt-2 text-xs text-gray-500 dark:text-neutral-400">
                 {profile.location && (
                   <span className="flex items-center gap-1">
                     <MapPin className="w-3.5 h-3.5" />
@@ -273,14 +273,14 @@ export default function DeveloperProfilePage({ params }: { params: Promise<{ use
       </div>
 
       {/* 2. PROFILE TABS */}
-      <div className="flex items-center justify-center border-t border-neutral-800">
+      <div className="flex items-center justify-center border-t border-gray-200 dark:border-neutral-800">
         <div className="flex items-center gap-8 sm:gap-14 text-xs font-semibold tracking-wider">
           <button
             onClick={() => setActiveTab("grid")}
             className={`py-3 flex items-center gap-1.5 border-t transition-colors ${
               activeTab === "grid"
-                ? "border-white text-white"
-                : "border-transparent text-neutral-500 hover:text-neutral-300"
+                ? "border-gray-900 text-gray-900 dark:border-white dark:text-white"
+                : "border-transparent text-gray-400 hover:text-gray-700 dark:text-neutral-500 dark:hover:text-neutral-300"
             }`}
           >
             <Grid className="w-3.5 h-3.5" />
@@ -291,8 +291,8 @@ export default function DeveloperProfilePage({ params }: { params: Promise<{ use
             onClick={() => setActiveTab("feed")}
             className={`py-3 flex items-center gap-1.5 border-t transition-colors ${
               activeTab === "feed"
-                ? "border-white text-white"
-                : "border-transparent text-neutral-500 hover:text-neutral-300"
+                ? "border-gray-900 text-gray-900 dark:border-white dark:text-white"
+                : "border-transparent text-gray-400 hover:text-gray-700 dark:text-neutral-500 dark:hover:text-neutral-300"
             }`}
           >
             <Terminal className="w-3.5 h-3.5" />
@@ -304,8 +304,8 @@ export default function DeveloperProfilePage({ params }: { params: Promise<{ use
               onClick={() => setActiveTab("github")}
               className={`py-3 flex items-center gap-1.5 border-t transition-colors ${
                 activeTab === "github"
-                  ? "border-white text-white"
-                  : "border-transparent text-neutral-500 hover:text-neutral-300"
+                  ? "border-gray-900 text-gray-900 dark:border-white dark:text-white"
+                  : "border-transparent text-gray-400 hover:text-gray-700 dark:text-neutral-500 dark:hover:text-neutral-300"
               }`}
             >
               <Github className="w-3.5 h-3.5" />

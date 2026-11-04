@@ -6,6 +6,7 @@ import Link from "next/link";
 import { FolderGit2, Compass, PlusCircle, Bell, User as UserIcon } from "lucide-react";
 import { Navbar } from "./Navbar";
 import { Sidebar } from "./Sidebar";
+import { SearchModal } from "./SearchModal";
 import { localStore } from "@/lib/supabase/store";
 import { supabase } from "@/lib/supabase/client";
 import { dbGetProfile } from "@/lib/supabase/db";
@@ -20,6 +21,24 @@ export function AppShell({ children }: AppShellProps) {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<Profile | null>(null);
   const [unreadNotifs, setUnreadNotifs] = useState(0);
+  const [searchModalOpen, setSearchModalOpen] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setSearchModalOpen((prev) => !prev);
+      }
+    };
+    const handleOpenSearch = () => setSearchModalOpen(true);
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("deloop_open_search", handleOpenSearch);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("deloop_open_search", handleOpenSearch);
+    };
+  }, []);
 
   useEffect(() => {
     // Sync Supabase session to local store on every route change
@@ -146,6 +165,12 @@ export function AppShell({ children }: AppShellProps) {
           );
         })}
       </nav>
+
+      {/* GLOBAL SEARCH SPOTLIGHT MODAL */}
+      <SearchModal
+        isOpen={searchModalOpen}
+        onClose={() => setSearchModalOpen(false)}
+      />
     </div>
   );
 }

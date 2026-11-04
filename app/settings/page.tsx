@@ -26,6 +26,7 @@ import { localStore } from "@/lib/supabase/store";
 import { dbUpdateProfile, dbDeleteAccount, dbUpdatePassword, dbGetCurrentSession } from "@/lib/supabase/db";
 import { supabase } from "@/lib/supabase/client";
 import { useToast } from "@/components/Toast";
+import { ImageUploader } from "@/components/ImageUploader";
 import { getSavedLanguage, setSavedLanguage, translations, Language } from "@/lib/i18n";
 
 export default function SettingsPage() {
@@ -40,6 +41,7 @@ export default function SettingsPage() {
   // FORM FIELDS
   const [fullName, setFullName] = useState("");
   const [username, setUsername] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("");
   const [developerTitle, setDeveloperTitle] = useState<DeveloperTitle>("Full-Stack Developer");
   const [bio, setBio] = useState("");
   const [location, setLocation] = useState("");
@@ -69,6 +71,7 @@ export default function SettingsPage() {
     setUser(curr);
     setFullName(curr.full_name || "");
     setUsername(curr.username || "");
+    setAvatarUrl(curr.avatar_url || "");
     setDeveloperTitle(curr.developer_title || "Full-Stack Developer");
     setBio(curr.bio || "");
     setLocation(curr.location || "");
@@ -180,6 +183,7 @@ export default function SettingsPage() {
     const updatePayload = {
       username: cleanUsername,
       full_name: fullName.trim(),
+      avatar_url: avatarUrl.trim() || undefined,
       developer_title: developerTitle,
       bio: bio.trim(),
       location: location.trim(),
@@ -351,6 +355,18 @@ export default function SettingsPage() {
             <h3 className="font-semibold text-white text-sm border-b border-neutral-800 pb-3">
               {lang === "tr" ? "Geliştirici Kimlik Bilgileri" : "Tərtibatçı Məlumatları"}
             </h3>
+
+            {/* AVATAR PHOTO UPLOADER */}
+            <div className="pb-1 max-w-sm">
+              <ImageUploader
+                value={avatarUrl}
+                onChange={(val) => setAvatarUrl(val)}
+                label={lang === "tr" ? "Profil Fotoğrafı / Avatar" : "Profil Şəkli / Avatar"}
+                aspectRatio="square"
+                maxSizeMB={3}
+                lang={lang}
+              />
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1.5">

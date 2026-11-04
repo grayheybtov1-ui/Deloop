@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { Project } from "@/types";
 import { localStore } from "@/lib/supabase/store";
-import { dbToggleLike, dbAddComment } from "@/lib/supabase/db";
+import { dbToggleLike, dbAddComment, dbToggleBookmark, dbIsBookmarked } from "@/lib/supabase/db";
 import { useToast } from "./Toast";
 import { timeAgo } from "@/lib/utils";
 
@@ -33,6 +33,52 @@ export function ProjectCard({ project: initialProject }: ProjectCardProps) {
   const [commentText, setCommentText] = useState<string>("");
   const [commentsCount, setCommentsCount] = useState<number>(initialProject.comments_count || 0);
   const { showToast } = useToast();
+
+  useEffect(() => {
+    // Check initial bookmark status
+    const checkBookmark = async () => {
+      try {
+        const saved = await dbIsBookmarked(project.id);
+        setIsSaved(saved);
+      } catch {
+        setIsSaved(localStore.isBookmarked(project.id));
+      }
+    };
+    checkBookmark();
+
+    // Listen to changes across components
+    const handleBookmarkChange = (e: any) => {
+      if (e?.detail?.projectId === project.id) {
+        setIsSaved(e.detail.isSaved);
+      }
+    };
+    window.addEventListener("deloop_bookmarks_changed", handleBookmarkChange);
+    return () => window.removeEventListener("deloop_bookmarks_changed", handleBookmarkChange);
+  }, [project.id]);
+
+  const handleBookmarkToggle = async (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    try {
+      const nextSaved = await dbToggleBookmark(project.id);
+      setIsSaved(nextSaved);
+      showToast(
+        nextSaved ? "🔖 Yadda saxlanıldı" : "Yadda saxlanılanlardan çıxarıldı",
+        `"${project.title}"`,
+        "info"
+      );
+    } catch {
+      const nextSaved = localStore.toggleBookmark(project.id);
+      setIsSaved(nextSaved);
+      showToast(
+        nextSaved ? "🔖 Yadda saxlanıldı" : "Yadda saxlanılanlardan çıxarıldı",
+        `"${project.title}"`,
+        "info"
+      );
+    }
+  };
 
   const handleLikeToggle = async (e?: React.MouseEvent) => {
     if (e) {
@@ -106,7 +152,7 @@ export function ProjectCard({ project: initialProject }: ProjectCardProps) {
   };
 
   return (
-    <article className="bg-neutral-900/40 border border-neutral-800/80 rounded-2xl overflow-hidden hover:border-neutral-700/80 transition-all shadow-sm">
+    <article className="bg-[#f5f7fa] dark:bg-[#0b0f17] border border-gray-200/80 dark:border-neutral-800/80 rounded-2xl overflow-hidden hover:border-gray-300 dark:hover:border-neutral-700/80 transition-all shadow-xs">
       {/* ── 1. POST HEADER ── */}
       <div className="flex items-center justify-between px-3 py-2.5 sm:px-4">
         <div className="flex items-center gap-2.5">
@@ -127,8 +173,7 @@ export function ProjectCard({ project: initialProject }: ProjectCardProps) {
             <div className="flex items-center gap-1.5">
               <Link
                 href={`/developers/${project.profile?.username || "dev"}`}
-                className="text-sm font-semibold"
-                style={{ color: "var(--text-main)", textDecoration: "none" }}
+                className="text-sm font-semibold text-gray-900 dark:text-white no-underline"
               >
                 {project.profile?.username || "developer"}
               </Link>
@@ -314,17 +359,16 @@ export function ProjectCard({ project: initialProject }: ProjectCardProps) {
 
           {/* Bookmark */}
           <button
-            onClick={() => {
-              setIsSaved(!isSaved);
-              showToast(!isSaved ? "🔖 Yadda saxlanıldı" : "Silindi", "", "info");
-            }}
+            onClick={handleBookmarkToggle}
+            className="transition-transform active:scale-90"
+            title={isSaved ? "Yadda saxlanılanlardan çıxar" : "Yadda saxla"}
             style={{ lineHeight: 0 }}
           >
             <Bookmark
               className="w-6 h-6 transition-all"
               style={{
-                fill: isSaved ? "var(--text-main)" : "none",
-                color: "var(--text-main)",
+                fill: isSaved ? "#0095f6" : "none",
+                color: isSaved ? "#0095f6" : "var(--text-main)",
                 strokeWidth: isSaved ? 0 : 1.5,
               }}
             />
@@ -332,21 +376,20 @@ export function ProjectCard({ project: initialProject }: ProjectCardProps) {
         </div>
 
         {/* LIKES COUNT */}
-        <p className="text-sm font-semibold" style={{ color: "var(--text-main)" }}>
+        <p className="text-sm font-semibold text-gray-900 dark:text-white">
           {likesCount.toLocaleString()} beğeni
         </p>
 
         {/* CAPTION */}
-        <div style={{ fontSize: "14px", color: "var(--text-main)", lineHeight: "1.5" }}>
+        <div className="text-sm text-gray-900 dark:text-neutral-200 leading-relaxed">
           <Link
             href={`/developers/${project.profile?.username}`}
-            className="font-semibold mr-1.5"
-            style={{ color: "var(--text-main)", textDecoration: "none" }}
+            className="font-semibold mr-1.5 text-gray-900 dark:text-white no-underline hover:underline"
           >
             {project.profile?.username}
           </Link>
           <span style={{ fontWeight: "600", color: "#0095f6" }}>[{project.title}]</span>{" "}
-          <span style={{ color: "var(--text-muted)", fontSize: "13px" }}>{project.description}</span>
+          <span className="text-gray-600 dark:text-neutral-400 text-xs sm:text-sm">{project.description}</span>
         </div>
 
         {/* HASHTAGS */}
@@ -365,15 +408,14 @@ export function ProjectCard({ project: initialProject }: ProjectCardProps) {
         {commentsCount > 0 && (
           <Link
             href={`/projects/${project.id}#comments`}
-            className="block"
-            style={{ color: "var(--text-muted)", fontSize: "13px", textDecoration: "none" }}
+            className="block text-gray-500 dark:text-neutral-400 text-xs sm:text-sm no-underline hover:text-gray-700 dark:hover:text-neutral-300"
           >
             Tüm {commentsCount} yorumu gör
           </Link>
         )}
 
         {/* TIME */}
-        <p style={{ fontSize: "10px", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+        <p className="text-[10px] text-gray-400 dark:text-neutral-500 uppercase tracking-wider">
           {timeAgo(project.created_at)}
         </p>
       </div>
@@ -381,8 +423,7 @@ export function ProjectCard({ project: initialProject }: ProjectCardProps) {
       {/* ── 4. COMMENT INPUT ── */}
       <form
         onSubmit={handleAddQuickComment}
-        className="flex items-center gap-3 px-3 sm:px-4 py-2.5"
-        style={{ borderTop: "1px solid var(--border-color)" }}
+        className="flex items-center gap-3 px-3 sm:px-4 py-2.5 border-t border-gray-200 dark:border-neutral-800/80"
       >
         {/* Current user avatar */}
         <img
@@ -399,8 +440,7 @@ export function ProjectCard({ project: initialProject }: ProjectCardProps) {
           placeholder="Yorum ekle..."
           value={commentText}
           onChange={(e) => setCommentText(e.target.value)}
-          className="flex-1 bg-transparent outline-none text-sm"
-          style={{ color: "var(--text-main)" }}
+          className="flex-1 bg-transparent outline-none text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-neutral-500"
         />
         {commentText.trim() && (
           <button

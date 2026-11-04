@@ -7,6 +7,7 @@ class LocalStore {
   private comments: Comment[] = [];
   private notifications: Notification[] = [];
   private messages: Message[] = [];
+  private bookmarks: { [userId: string]: string[] } = {};
   private currentUser: Profile | null = null; // No one logged in initially
 
   constructor() {
@@ -90,6 +91,16 @@ class LocalStore {
           this.notifications = JSON.parse(savedNotifs);
         } catch (e) {
           this.notifications = [];
+        }
+      }
+
+      // 7. Load bookmarks
+      const savedBookmarks = localStorage.getItem("deloop_bookmarks");
+      if (savedBookmarks) {
+        try {
+          this.bookmarks = JSON.parse(savedBookmarks);
+        } catch (e) {
+          this.bookmarks = {};
         }
       }
     }
@@ -641,6 +652,58 @@ class LocalStore {
     this.messages.push(newMessage);
     this.persistMessages();
     return newMessage;
+  }
+
+  // ==========================================
+  // BOOKMARKS (SAVED PROJECTS)
+  // ==========================================
+  toggleBookmark(projectId: string): boolean {
+    const userId = this.currentUser?.id || "guest";
+    if (!this.bookmarks[userId]) {
+      this.bookmarks[userId] = [];
+    }
+
+    const idx = this.bookmarks[userId].indexOf(projectId);
+    let isSaved = false;
+    if (idx > -1) {
+      this.bookmarks[userId].splice(idx, 1);
+      isSaved = false;
+    } else {
+      this.bookmarks[userId].push(projectId);
+      isSaved = true;
+    }
+
+    this.persistBookmarks();
+
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("deloop_bookmarks_changed", {
+          detail: { projectId, isSaved },
+        })
+      );
+    }
+    return isSaved;
+  }
+
+  isBookmarked(projectId: string): boolean {
+    const userId = this.currentUser?.id || "guest";
+    return !!(this.bookmarks[userId] && this.bookmarks[userId].includes(projectId));
+  }
+
+  getBookmarkedProjectIds(): string[] {
+    const userId = this.currentUser?.id || "guest";
+    return this.bookmarks[userId] || [];
+  }
+
+  getBookmarkedProjects(): Project[] {
+    const ids = this.getBookmarkedProjectIds();
+    return this.projects.filter((p) => ids.includes(p.id));
+  }
+
+  private persistBookmarks() {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("deloop_bookmarks", JSON.stringify(this.bookmarks));
+    }
   }
 
   // ==========================================

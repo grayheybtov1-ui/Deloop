@@ -10,7 +10,7 @@ export function DeveloperStories() {
   const currentUser = localStore.getCurrentUser();
 
   return (
-    <div className="bg-neutral-900/40 border border-neutral-800/80 rounded-2xl p-4 overflow-x-auto no-scrollbar shadow-sm mb-6">
+    <div className="bg-[#f5f7fa] dark:bg-[#0b0f17] border border-gray-200/80 dark:border-neutral-800/80 rounded-2xl p-4 overflow-x-auto no-scrollbar shadow-xs mb-6 transition-colors">
       <div className="flex items-start gap-4 min-w-max px-1">
 
         {/* MY STORY — Add Story */}
@@ -22,35 +22,26 @@ export function DeveloperStories() {
                 `https://ui-avatars.com/api/?name=${currentUser?.full_name || "U"}&background=random&size=120`
               }
               alt="Hekayəniz"
-              className="object-cover rounded-full"
+              className="object-cover rounded-full border border-gray-200 dark:border-neutral-800"
               style={{
                 width: "56px",
                 height: "56px",
-                border: "1px solid var(--border-color)",
               }}
             />
             {/* Blue Plus Badge */}
             <div
-              className="absolute bottom-0 right-0 flex items-center justify-center rounded-full text-white"
+              className="absolute bottom-0 right-0 flex items-center justify-center rounded-full text-white bg-blue-600 border-2 border-white dark:border-[#0b0f17]"
               style={{
                 width: "20px",
                 height: "20px",
-                backgroundColor: "#0095f6",
-                border: "2px solid var(--bg-card)",
               }}
             >
               <Plus className="w-3 h-3" strokeWidth={3} />
             </div>
           </div>
           <span
-            className="text-center truncate"
-            style={{
-              fontSize: "11px",
-              color: "var(--text-main)",
-              width: "64px",
-              display: "block",
-              textAlign: "center",
-            }}
+            className="text-center truncate text-[11px] text-gray-800 dark:text-neutral-200 block"
+            style={{ width: "64px" }}
           >
             Hikayen
           </span>
@@ -61,8 +52,8 @@ export function DeveloperStories() {
           <Link
             key={profile.id}
             href={`/developers/${profile.username}`}
-            className="flex flex-col items-center gap-1.5 group"
-            style={{ width: "64px", textDecoration: "none" }}
+            className="flex flex-col items-center gap-1.5 group no-underline"
+            style={{ width: "64px" }}
           >
             {/* Clean Story Ring */}
             <div
@@ -75,11 +66,10 @@ export function DeveloperStories() {
               }}
             >
               <div
-                className="rounded-full"
+                className="rounded-full bg-white dark:bg-[#0b0f17]"
                 style={{
                   width: "52px",
                   height: "52px",
-                  backgroundColor: "var(--bg-card)",
                 }}
               >
                 <img
@@ -93,14 +83,8 @@ export function DeveloperStories() {
               </div>
             </div>
             <span
-              className="truncate text-center"
-              style={{
-                fontSize: "11px",
-                color: "var(--text-main)",
-                width: "64px",
-                display: "block",
-                textAlign: "center",
-              }}
+              className="truncate text-center text-[11px] text-gray-800 dark:text-neutral-200 group-hover:text-blue-500 transition-colors block"
+              style={{ width: "64px" }}
             >
               {profile.username}
             </span>

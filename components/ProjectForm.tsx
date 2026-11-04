@@ -6,6 +6,7 @@ import { FolderGit2, Image, Link as LinkIcon, Code2, CheckCircle2, AlertCircle }
 import { Project, ProjectStatus } from "@/types";
 import { localStore } from "@/lib/supabase/store";
 import { dbCreateProject, dbUpdateProject } from "@/lib/supabase/db";
+import { ImageUploader } from "./ImageUploader";
 import { useToast } from "./Toast";
 import { getSavedLanguage, Language } from "@/lib/i18n";
 
@@ -209,18 +210,14 @@ export function ProjectForm({ initialData, isEditing = false }: ProjectFormProps
           )}
         </div>
 
-        {/* COVER IMAGE URL */}
-        <div className="md:col-span-2 space-y-1.5">
-          <label className="block text-xs font-semibold text-neutral-300 flex items-center gap-1.5">
-            <Image className="w-3.5 h-3.5 text-neutral-400" />
-            {lang === "tr" ? "Kapak Resmi URL (İsteğe bağlı)" : "Kaver Şəkil URL"}
-          </label>
-          <input
-            type="url"
+        {/* COVER IMAGE */}
+        <div className="md:col-span-2">
+          <ImageUploader
             value={coverImage}
-            onChange={(e) => setCoverImage(e.target.value)}
-            placeholder="https://images.unsplash.com/photo-1555066931-4365d14bab8c"
-            className="w-full px-4 py-2.5 rounded-xl bg-neutral-900 border border-neutral-800 text-white text-xs sm:text-sm focus:outline-none focus:border-neutral-600 transition-colors"
+            onChange={(val) => setCoverImage(val)}
+            label={lang === "tr" ? "Kapak Resmi (İsteğe bağlı)" : "Kaver Şəkli (İstəyə görə)"}
+            aspectRatio="video"
+            lang={lang}
           />
         </div>
 

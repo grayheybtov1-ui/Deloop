@@ -56,11 +56,11 @@ export default function DevelopersPage() {
       
       {/* PAGE HEADER */}
       <div className="space-y-1">
-        <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2.5">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight flex items-center gap-2.5">
           <Users className="w-6 h-6 text-blue-500" />
           <span>{lang === "tr" ? "Geliştiricileri Keşfet" : "Tərtibatçıları Kəşf Et"}</span>
         </h1>
-        <p className="text-xs text-neutral-400">
+        <p className="text-xs text-gray-500 dark:text-neutral-400">
           {lang === "tr"
             ? "Yazılım mühendisleriyle tanışın, teknoloji yığınlarını inceleyin ve GitHub projelerini keşfedin."
             : "Proqramçılarla əlaqə qurun, texnologiya steklərini araşdırın və layihələri kəşf edin."}
@@ -68,9 +68,9 @@ export default function DevelopersPage() {
       </div>
 
       {/* SEARCH AND FILTER BAR */}
-      <div className="bg-neutral-900/40 border border-neutral-800 rounded-2xl p-4 space-y-3.5">
+      <div className="bg-[#f5f7fa] dark:bg-[#0b0f17] border border-gray-200 dark:border-neutral-800 rounded-2xl p-4 space-y-3.5 shadow-xs">
         <div className="relative">
-          <Search className="w-4 h-4 text-neutral-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-gray-400 dark:text-neutral-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             value={searchQuery}
@@ -80,13 +80,13 @@ export default function DevelopersPage() {
                 ? "İsim, kullanıcı adı veya teknoloji ile ara (örn: React, Python)..."
                 : "Ad, istifadəçi adı və ya texnologiya ilə axtar..."
             }
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-neutral-900 border border-neutral-800 text-white text-xs sm:text-sm focus:outline-none focus:border-neutral-600 transition-colors placeholder:text-neutral-500"
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 text-gray-900 dark:text-white text-xs sm:text-sm focus:outline-none focus:border-blue-500 transition-colors placeholder:text-gray-400 dark:placeholder:text-neutral-500"
           />
         </div>
 
         {/* SKILL PILLS */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
-          <span className="text-xs font-medium text-neutral-400 shrink-0 flex items-center gap-1 mr-1">
+          <span className="text-xs font-medium text-gray-500 dark:text-neutral-400 shrink-0 flex items-center gap-1 mr-1">
             <Filter className="w-3.5 h-3.5" />
             {lang === "tr" ? "Yetenekler:" : "Bacarıqlar:"}
           </span>
@@ -96,8 +96,8 @@ export default function DevelopersPage() {
               onClick={() => setSelectedSkill(skill)}
               className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors shrink-0 ${
                 selectedSkill === skill
-                  ? "bg-neutral-800 text-white font-semibold"
-                  : "bg-neutral-900 text-neutral-400 border border-neutral-800 hover:text-white"
+                  ? "bg-blue-600 text-white font-semibold shadow-xs"
+                  : "bg-white text-gray-600 border border-gray-200 dark:bg-neutral-900 dark:text-neutral-400 dark:border-neutral-800 hover:text-gray-900 dark:hover:text-white"
               }`}
             >
               {skill}

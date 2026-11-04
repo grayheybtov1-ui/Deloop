@@ -52,19 +52,6 @@ export async function dbSignIn(email: string, password: string) {
 }
 
 export async function dbSignInWithGoogle() {
-  // Check if Google OAuth provider is enabled in Supabase via internal API route (prevents CORS issues)
-  try {
-    const checkRes = await fetch("/api/auth/google-check");
-    if (checkRes.ok) {
-      const checkData = await checkRes.json();
-      if (!checkData.enabled) {
-        throw new Error("SUPABASE_GOOGLE_DISABLED");
-      }
-    }
-  } catch (err: any) {
-    if (err.message === "SUPABASE_GOOGLE_DISABLED") throw err;
-  }
-
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
@@ -187,9 +174,43 @@ export async function dbGetProfile(userId: string): Promise<Profile | null> {
     .from("profiles")
     .select("*")
     .eq("id", userId)
-    .single();
-  if (error || !data) return null;
-  return mapProfile(data);
+    .maybeSingle();
+
+  if (data) return mapProfile(data);
+
+  // If profile not yet created (e.g. newly signed up via Google OAuth), auto-create on the fly
+  try {
+    const session = await dbGetCurrentSession();
+    if (session?.user && session.user.id === userId) {
+      const u = session.user;
+      const email = u.email || "";
+      const rawName = u.user_metadata?.full_name || u.user_metadata?.name || email.split("@")[0] || "Developer";
+      const cleanUsername = (u.user_metadata?.user_name || email.split("@")[0] || "user_" + userId.slice(0, 5))
+        .toLowerCase()
+        .replace(/[^a-z0-9_]/g, "");
+      const avatarUrl = u.user_metadata?.avatar_url || u.user_metadata?.picture || `https://api.dicebear.com/7.x/bottts/svg?seed=${cleanUsername}`;
+
+      const newProfile = {
+        id: userId,
+        username: cleanUsername,
+        full_name: rawName,
+        avatar_url: avatarUrl,
+        developer_title: "Full-Stack Developer",
+        bio: "Building amazing projects on Deloop.",
+        role: "developer",
+        skills: ["JavaScript", "TypeScript", "React"],
+      };
+
+      const { data: inserted } = await supabase.from("profiles").upsert(newProfile).select().maybeSingle();
+      if (inserted) return mapProfile(inserted);
+
+      return mapProfile({ ...newProfile, created_at: new Date().toISOString() });
+    }
+  } catch (err) {
+    console.warn("Auto-create profile notice:", err);
+  }
+
+  return null;
 }
 
 export async function dbGetProfileByUsername(username: string): Promise<Profile | null> {
@@ -456,6 +477,92 @@ export async function dbToggleLike(projectId: string): Promise<{ liked: boolean;
     .eq("project_id", projectId);
 
   return { liked: !existing, count: count || 0 };
+}
+
+// ==========================================
+// BOOKMARKS (SAVED PROJECTS)
+// ==========================================
+
+export async function dbToggleBookmark(projectId: string): Promise<boolean> {
+  const session = await dbGetCurrentSession();
+  const userId = session?.user?.id;
+
+  if (userId) {
+    try {
+      const { data: existing } = await supabase
+        .from("project_bookmarks")
+        .select("id")
+        .eq("project_id", projectId)
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (existing) {
+        await supabase.from("project_bookmarks").delete().eq("id", existing.id);
+        localStore.toggleBookmark(projectId);
+        return false;
+      } else {
+        await supabase.from("project_bookmarks").insert({ project_id: projectId, user_id: userId });
+        localStore.toggleBookmark(projectId);
+        return true;
+      }
+    } catch {
+      // Fallback to local store
+    }
+  }
+
+  return localStore.toggleBookmark(projectId);
+}
+
+export async function dbIsBookmarked(projectId: string): Promise<boolean> {
+  const session = await dbGetCurrentSession();
+  const userId = session?.user?.id;
+
+  if (userId) {
+    try {
+      const { data } = await supabase
+        .from("project_bookmarks")
+        .select("id")
+        .eq("project_id", projectId)
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (data) return true;
+    } catch {
+      // Fallback to local store
+    }
+  }
+
+  return localStore.isBookmarked(projectId);
+}
+
+export async function dbGetBookmarkedProjects(): Promise<Project[]> {
+  const session = await dbGetCurrentSession();
+  const userId = session?.user?.id;
+
+  if (userId) {
+    try {
+      const { data: bookmarks } = await supabase
+        .from("project_bookmarks")
+        .select("project_id")
+        .eq("user_id", userId);
+
+      if (bookmarks && bookmarks.length > 0) {
+        const projectIds = bookmarks.map((b: any) => b.project_id);
+        const { data: projs } = await supabase
+          .from("projects")
+          .select("*, profile:profiles(*)")
+          .in("id", projectIds);
+
+        if (projs && projs.length > 0) {
+          return projs.map((p: any) => mapProject(p, 0, 0, false));
+        }
+      }
+    } catch {
+      // Fallback
+    }
+  }
+
+  return localStore.getBookmarkedProjects();
 }
 
 // ==========================================
