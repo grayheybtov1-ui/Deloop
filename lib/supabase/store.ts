@@ -108,40 +108,64 @@ class LocalStore {
 
   private persistProfiles() {
     if (typeof window !== "undefined") {
-      localStorage.setItem("deloop_profiles", JSON.stringify(this.profiles));
+      try {
+        localStorage.setItem("deloop_profiles", JSON.stringify(this.profiles));
+      } catch (e) {
+        console.warn("Failed to persist profiles:", e);
+      }
     }
   }
 
   private persistProjects() {
     if (typeof window !== "undefined") {
-      localStorage.setItem("deloop_projects", JSON.stringify(this.projects));
+      try {
+        localStorage.setItem("deloop_projects", JSON.stringify(this.projects));
+      } catch (e) {
+        console.warn("Failed to persist projects:", e);
+      }
     }
   }
 
   private persistComments() {
     if (typeof window !== "undefined") {
-      localStorage.setItem("deloop_comments", JSON.stringify(this.comments));
+      try {
+        localStorage.setItem("deloop_comments", JSON.stringify(this.comments));
+      } catch (e) {
+        console.warn("Failed to persist comments:", e);
+      }
     }
   }
 
   private persistMessages() {
     if (typeof window !== "undefined") {
-      localStorage.setItem("deloop_messages", JSON.stringify(this.messages));
+      try {
+        localStorage.setItem("deloop_messages", JSON.stringify(this.messages));
+      } catch (e) {
+        console.warn("Failed to persist messages:", e);
+      }
     }
   }
 
   private persistNotifications() {
     if (typeof window !== "undefined") {
-      localStorage.setItem("deloop_notifications", JSON.stringify(this.notifications));
+      try {
+        localStorage.setItem("deloop_notifications", JSON.stringify(this.notifications));
+      } catch (e) {
+        console.warn("Failed to persist notifications:", e);
+      }
     }
   }
 
   private persistUser() {
     if (typeof window !== "undefined") {
-      if (this.currentUser) {
-        localStorage.setItem("deloop_user", JSON.stringify(this.currentUser));
-      } else {
-        localStorage.removeItem("deloop_user");
+      try {
+        if (this.currentUser) {
+          localStorage.setItem("deloop_user", JSON.stringify(this.currentUser));
+        } else {
+          localStorage.removeItem("deloop_user");
+        }
+      } catch (e) {
+        console.warn("Failed to persist currentUser:", e);
       }
     }
   }
@@ -599,7 +623,58 @@ class LocalStore {
   // NOTIFICATIONS
   // ==========================================
   getNotifications(): Notification[] {
+    if (this.currentUser) {
+      return this.notifications.filter(n => n.user_id === this.currentUser!.id);
+    }
     return this.notifications;
+  }
+
+  addNotification(notif: {
+    user_id: string;
+    actor_id: string;
+    type: "like" | "comment" | "follow";
+    project_id?: string;
+  }): Notification | null {
+    if (notif.user_id === notif.actor_id) return null;
+
+    const actor =
+      this.profiles.find((p) => p.id === notif.actor_id) ||
+      (this.currentUser?.id === notif.actor_id ? this.currentUser : undefined);
+
+    const project = notif.project_id
+      ? this.projects.find((p) => p.id === notif.project_id)
+      : undefined;
+
+    const newNotif: Notification = {
+      id: "notif-" + Date.now() + "-" + Math.random().toString(36).substring(2, 6),
+      user_id: notif.user_id,
+      actor_id: notif.actor_id,
+      type: notif.type,
+      project_id: notif.project_id,
+      is_read: false,
+      created_at: new Date().toISOString(),
+      actor: actor,
+      project: project ? { id: project.id, title: project.title } : undefined,
+    };
+
+    // Prevent immediate duplicate within 3 seconds
+    const isDup = this.notifications.some(
+      (n) =>
+        n.user_id === notif.user_id &&
+        n.actor_id === notif.actor_id &&
+        n.type === notif.type &&
+        n.project_id === notif.project_id &&
+        Date.now() - new Date(n.created_at).getTime() < 3000
+    );
+
+    if (!isDup) {
+      this.notifications.unshift(newNotif);
+      this.persistNotifications();
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("deloop_notifications_updated"));
+      }
+    }
+    return newNotif;
   }
 
   markNotificationAsRead(id: string) {
@@ -607,12 +682,18 @@ class LocalStore {
     if (notif) {
       notif.is_read = true;
       this.persistNotifications();
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("deloop_notifications_updated"));
+      }
     }
   }
 
   markAllNotificationsAsRead() {
     this.notifications.forEach(n => (n.is_read = true));
     this.persistNotifications();
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("deloop_notifications_updated"));
+    }
   }
 
   // ==========================================

@@ -468,6 +468,12 @@ export async function dbToggleLike(projectId: string): Promise<{ liked: boolean;
         project_id: projectId,
         is_read: false,
       });
+      localStore.addNotification({
+        user_id: project.user_id,
+        actor_id: userId,
+        type: "like",
+        project_id: projectId,
+      });
     }
   }
 
@@ -600,6 +606,12 @@ export async function dbAddComment(projectId: string, content: string): Promise<
       project_id: projectId,
       is_read: false,
     });
+    localStore.addNotification({
+      user_id: project.user_id,
+      actor_id: userId,
+      type: "comment",
+      project_id: projectId,
+    });
   }
 
   return mapComment(data);
@@ -631,6 +643,11 @@ export async function dbToggleFollow(targetUserId: string): Promise<{ following:
       actor_id: followerId,
       type: "follow",
       is_read: false,
+    });
+    localStore.addNotification({
+      user_id: targetUserId,
+      actor_id: followerId,
+      type: "follow",
     });
     return { following: true };
   }
@@ -706,6 +723,17 @@ export async function dbSendMessage(receiverId: string, content: string): Promis
 
   if (error) throw error;
   return mapMessage(data);
+}
+
+export async function dbMarkMessagesAsRead(senderId: string): Promise<void> {
+  const session = await dbGetCurrentSession();
+  if (!session?.user) return;
+  await supabase
+    .from("messages")
+    .update({ is_read: true })
+    .eq("sender_id", senderId)
+    .eq("receiver_id", session.user.id)
+    .eq("is_read", false);
 }
 
 // ==========================================
@@ -831,7 +859,7 @@ function mapNotification(data: any): Notification {
   };
 }
 
-function mapMessage(data: any): Message {
+export function mapMessage(data: any): Message {
   return {
     id: data.id,
     sender_id: data.sender_id,

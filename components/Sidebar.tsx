@@ -50,8 +50,22 @@ export function Sidebar({ user: propUser, isOpen, onClose }: SidebarProps) {
 
     setLang(getSavedLanguage());
     const handleLang = () => setLang(getSavedLanguage());
+    const handleUserUpdated = () => {
+      const refreshed = localStore.getCurrentUser();
+      setCurrentUser(refreshed);
+    };
+    const handleNotifsUpdated = () => {
+      const notifs = localStore.getNotifications();
+      setUnreadNotifs(notifs.filter((n) => !n.is_read).length);
+    };
     window.addEventListener("deloop_lang_changed", handleLang);
-    return () => window.removeEventListener("deloop_lang_changed", handleLang);
+    window.addEventListener("deloop_user_updated", handleUserUpdated);
+    window.addEventListener("deloop_notifications_updated", handleNotifsUpdated);
+    return () => {
+      window.removeEventListener("deloop_lang_changed", handleLang);
+      window.removeEventListener("deloop_user_updated", handleUserUpdated);
+      window.removeEventListener("deloop_notifications_updated", handleNotifsUpdated);
+    };
   }, [propUser, pathname]);
 
   const handleLogout = () => {

@@ -19,6 +19,9 @@ import {
   AlertTriangle,
   AlertCircle,
   AtSign,
+  Mail,
+  KeyRound,
+  Loader2,
 } from "lucide-react";
 
 import { Profile, DeveloperTitle } from "@/types";
@@ -51,7 +54,11 @@ export default function SettingsPage() {
   const [website, setWebsite] = useState("");
   const [linkedinUrl, setLinkedinUrl] = useState("");
 
+  const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isSendingReset, setIsSendingReset] = useState(false);
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
 
   // DELETE ACCOUNT MODAL STATE
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -180,10 +187,36 @@ export default function SettingsPage() {
       .map((s) => s.trim())
       .filter((s) => s.length > 0);
 
-    const updatePayload = {
+    // If the avatar is a base64 data URL, try to upload to Supabase Storage.
+    // If storage isn't configured, keep the base64 for localStorage only and
+    // send the previous (remote) URL to Supabase so the DB update doesn't fail.
+    const isBase64Avatar = avatarUrl.startsWith("data:");
+    let remoteAvatarUrl: string | undefined = isBase64Avatar ? (user.avatar_url || undefined) : (avatarUrl.trim() || undefined);
+
+    if (isBase64Avatar) {
+      try {
+        // Convert base64 to Blob
+        const res = await fetch(avatarUrl);
+        const blob = await res.blob();
+        const ext = blob.type.split("/")[1] || "jpg";
+        const fileName = `avatars/${user.id}_${Date.now()}.${ext}`;
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from("avatars")
+          .upload(fileName, blob, { upsert: true, contentType: blob.type });
+        if (!uploadError && uploadData) {
+          const { data: publicUrlData } = supabase.storage.from("avatars").getPublicUrl(fileName);
+          remoteAvatarUrl = publicUrlData?.publicUrl || remoteAvatarUrl;
+        }
+      } catch {
+        // Storage not set up — keep old remote URL for Supabase, base64 for local
+      }
+    }
+
+    // Payload for Supabase (never base64 — too large for REST API)
+    const remotePayload = {
       username: cleanUsername,
       full_name: fullName.trim(),
-      avatar_url: avatarUrl.trim() || undefined,
+      avatar_url: remoteAvatarUrl,
       developer_title: developerTitle,
       bio: bio.trim(),
       location: location.trim(),
@@ -193,51 +226,171 @@ export default function SettingsPage() {
       linkedin_url: linkedinUrl.trim(),
     };
 
+    // Payload for localStorage (can include base64)
+    const localPayload = {
+      ...remotePayload,
+      avatar_url: avatarUrl.trim() || remoteAvatarUrl,
+    };
+
+    // 1. Try to save to Supabase
+    let supabaseSaved = false;
     try {
-      const updated = await dbUpdateProfile(user.id, updatePayload);
+      const updated = await dbUpdateProfile(user.id, remotePayload);
       if (updated) {
-        setUser(updated);
-        localStore.setCurrentUser(updated);
-      } else {
-        const localUpdated = localStore.updateProfile(user.id, updatePayload);
-        if (localUpdated) setUser(localUpdated);
+        supabaseSaved = true;
+        // Merge base64 avatar into the returned profile for local display
+        const mergedProfile: typeof updated = {
+          ...updated,
+          avatar_url: localPayload.avatar_url || updated.avatar_url,
+        };
+        setUser(mergedProfile);
+        localStore.setCurrentUser(mergedProfile);
+        localStore.updateProfile(user.id, localPayload);
       }
     } catch {
-      // Fallback
-      const localUpdated = localStore.updateProfile(user.id, updatePayload);
+      // Supabase failed — handled below
+    }
+
+    // 2. Always persist to localStorage (guarantees changes survive page reload)
+    if (!supabaseSaved) {
+      const localUpdated = localStore.updateProfile(user.id, localPayload);
       if (localUpdated) {
         setUser(localUpdated);
+        localStore.setCurrentUser(localUpdated);
       }
     }
 
-    localStore.updateProfile(user.id, updatePayload);
     window.dispatchEvent(new Event("deloop_user_updated"));
     showToast(t.settings.savedToast, undefined, "success");
   };
 
   const handlePasswordUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (newPassword.length < 6) {
-      showToast(lang === "tr" ? "Şifre en az 6 karakter olmalıdır" : "Şifrə ən az 6 simvol olmalıdır", undefined, "error");
+    if (!user) return;
+
+    if (!oldPassword.trim()) {
+      showToast(
+        lang === "tr" ? "Lütfen mevcut şifrenizi girin" : "Zəhmət olmasa köhnə şifrənizi daxil edin",
+        undefined,
+        "error"
+      );
       return;
     }
 
-    const session = await dbGetCurrentSession().catch(() => null);
-    if (session) {
-      // Supabase account: password lives only in Supabase Auth
-      try {
-        await dbUpdatePassword(newPassword);
-      } catch (err: any) {
-        showToast(err?.message || (lang === "tr" ? "Şifre güncellenemedi" : "Şifrə yenilənmədi"), undefined, "error");
-        return;
-      }
-    } else if (user) {
-      // Local-only account
-      localStore.updateProfile(user.id, { password: newPassword });
+    if (newPassword.length < 6) {
+      showToast(
+        lang === "tr" ? "Yeni şifre en az 6 karakter olmalıdır" : "Yeni şifrə ən az 6 simvol olmalıdır",
+        undefined,
+        "error"
+      );
+      return;
     }
 
-    setNewPassword("");
-    showToast(lang === "tr" ? "Şifre başarıyla güncellendi" : "Şifrə yeniləndi", undefined, "success");
+    if (newPassword !== confirmPassword) {
+      showToast(
+        lang === "tr" ? "Yeni şifreler eşleşmiyor" : "Yeni şifrələr bir-biri ilə uyğun gəlmir",
+        undefined,
+        "error"
+      );
+      return;
+    }
+
+    setIsUpdatingPassword(true);
+    try {
+      const session = await dbGetCurrentSession().catch(() => null);
+      if (session?.user?.email) {
+        // Supabase account: verify old password first
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: session.user.email,
+          password: oldPassword,
+        });
+
+        if (signInError) {
+          showToast(
+            lang === "tr" ? "Mevcut şifre yanlış" : "Köhnə şifrə yanlışdır",
+            lang === "tr" ? "Lütfen mevcut şifrenizi doğru girdiğinizden emin olun" : "Zəhmət olmasa köhnə şifrəni düzgün daxil edin",
+            "error"
+          );
+          setIsUpdatingPassword(false);
+          return;
+        }
+
+        await dbUpdatePassword(newPassword);
+      } else {
+        // Local account: check old password if set
+        const existingLocalUser = localStore.getCurrentUser();
+        if ((existingLocalUser as any)?.password && (existingLocalUser as any).password !== oldPassword) {
+          showToast(
+            lang === "tr" ? "Mevcut şifre yanlış" : "Köhnə şifrə yanlışdır",
+            undefined,
+            "error"
+          );
+          setIsUpdatingPassword(false);
+          return;
+        }
+        localStore.updateProfile(user.id, { password: newPassword });
+      }
+
+      setOldPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      showToast(
+        lang === "tr" ? "Şifre başarıyla güncellendi" : "Şifrə uğurla yeniləndi",
+        undefined,
+        "success"
+      );
+    } catch (err: any) {
+      showToast(
+        err?.message || (lang === "tr" ? "Şifre güncellenemedi" : "Şifrə yenilənmədi"),
+        undefined,
+        "error"
+      );
+    } finally {
+      setIsUpdatingPassword(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!user) return;
+    setIsSendingReset(true);
+    try {
+      const session = await dbGetCurrentSession().catch(() => null);
+      const targetEmail = session?.user?.email || (user as any).email;
+      if (!targetEmail) {
+        showToast(
+          lang === "tr" ? "E-posta adresi bulunamadı" : "E-poçt ünvanı tapılmadı",
+          lang === "tr" ? "Lütfen profilinizde geçerli bir e-posta olduğundan emin olun" : "Bu hesab üçün qeydiyyat e-poçtu tapılmadı",
+          "error"
+        );
+        setIsSendingReset(false);
+        return;
+      }
+
+      const redirectUrl = typeof window !== "undefined" ? `${window.location.origin}/reset-password` : "";
+      const { error } = await supabase.auth.resetPasswordForEmail(targetEmail, {
+        redirectTo: redirectUrl,
+      });
+
+      if (error) {
+        showToast(error.message, undefined, "error");
+      } else {
+        showToast(
+          lang === "tr" ? "Sıfırlama e-postası gönderildi" : "Şifrə sıfırlama e-poçtu göndərildi",
+          lang === "tr"
+            ? `${targetEmail} adresine sıfırlama bağlantısı yollandı. Gmail kutunuzu kontrol edin.`
+            : `${targetEmail} ünvanına təsdiq linki göndərildi. Zəhmət olmasa Gmail qutunuzu yoxlayın.`,
+          "success"
+        );
+      }
+    } catch (err: any) {
+      showToast(
+        err?.message || (lang === "tr" ? "E-posta gönderilemedi" : "E-poçt göndərilə bilmədi"),
+        undefined,
+        "error"
+      );
+    } finally {
+      setIsSendingReset(false);
+    }
   };
 
   const handleConfirmDelete = async () => {
@@ -275,24 +428,24 @@ export default function SettingsPage() {
     <div className="w-full max-w-3xl mx-auto space-y-6 pb-20 pt-2 px-2 sm:px-4">
       
       {/* SETTINGS HEADER */}
-      <div className="pb-4 border-b border-neutral-800">
-        <h1 className="text-2xl font-bold text-white flex items-center gap-2.5">
+      <div className="pb-4 border-b border-gray-200 dark:border-neutral-800">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2.5">
           <SettingsIcon className="w-6 h-6 text-blue-500" />
           <span>{t.settings.title}</span>
         </h1>
-        <p className="text-xs text-neutral-400 mt-1">
+        <p className="text-xs text-gray-500 dark:text-neutral-400 mt-1">
           {t.settings.subtitle}
         </p>
       </div>
 
       {/* SECTION TABS */}
-      <div className="flex items-center gap-2 border-b border-neutral-800 pb-2 overflow-x-auto text-xs font-medium">
+      <div className="flex items-center gap-2 border-b border-gray-200 dark:border-neutral-800 pb-2 overflow-x-auto text-xs font-medium">
         <button
           onClick={() => setActiveSection("profile")}
           className={`px-3.5 py-2 rounded-lg flex items-center gap-2 transition-colors shrink-0 ${
             activeSection === "profile"
-              ? "bg-neutral-800 text-white font-semibold"
-              : "text-neutral-400 hover:text-neutral-200 hover:bg-neutral-900"
+              ? "bg-white dark:bg-neutral-800 text-blue-600 dark:text-white font-semibold border border-gray-200 dark:border-neutral-700 shadow-xs"
+              : "text-gray-500 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-neutral-200 hover:bg-gray-100 dark:hover:bg-neutral-900 border border-transparent"
           }`}
         >
           <User className="w-4 h-4" />
@@ -303,8 +456,8 @@ export default function SettingsPage() {
           onClick={() => setActiveSection("language")}
           className={`px-3.5 py-2 rounded-lg flex items-center gap-2 transition-colors shrink-0 ${
             activeSection === "language"
-              ? "bg-neutral-800 text-white font-semibold"
-              : "text-neutral-400 hover:text-neutral-200 hover:bg-neutral-900"
+              ? "bg-white dark:bg-neutral-800 text-blue-600 dark:text-white font-semibold border border-gray-200 dark:border-neutral-700 shadow-xs"
+              : "text-gray-500 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-neutral-200 hover:bg-gray-100 dark:hover:bg-neutral-900 border border-transparent"
           }`}
         >
           <Globe className="w-4 h-4" />
@@ -315,8 +468,8 @@ export default function SettingsPage() {
           onClick={() => setActiveSection("social")}
           className={`px-3.5 py-2 rounded-lg flex items-center gap-2 transition-colors shrink-0 ${
             activeSection === "social"
-              ? "bg-neutral-800 text-white font-semibold"
-              : "text-neutral-400 hover:text-neutral-200 hover:bg-neutral-900"
+              ? "bg-white dark:bg-neutral-800 text-blue-600 dark:text-white font-semibold border border-gray-200 dark:border-neutral-700 shadow-xs"
+              : "text-gray-500 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-neutral-200 hover:bg-gray-100 dark:hover:bg-neutral-900 border border-transparent"
           }`}
         >
           <Share2 className="w-4 h-4" />
@@ -327,8 +480,8 @@ export default function SettingsPage() {
           onClick={() => setActiveSection("security")}
           className={`px-3.5 py-2 rounded-lg flex items-center gap-2 transition-colors shrink-0 ${
             activeSection === "security"
-              ? "bg-neutral-800 text-white font-semibold"
-              : "text-neutral-400 hover:text-neutral-200 hover:bg-neutral-900"
+              ? "bg-white dark:bg-neutral-800 text-blue-600 dark:text-white font-semibold border border-gray-200 dark:border-neutral-700 shadow-xs"
+              : "text-gray-500 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-neutral-200 hover:bg-gray-100 dark:hover:bg-neutral-900 border border-transparent"
           }`}
         >
           <Lock className="w-4 h-4" />
@@ -339,8 +492,8 @@ export default function SettingsPage() {
           onClick={() => setActiveSection("appearance")}
           className={`px-3.5 py-2 rounded-lg flex items-center gap-2 transition-colors shrink-0 ${
             activeSection === "appearance"
-              ? "bg-neutral-800 text-white font-semibold"
-              : "text-neutral-400 hover:text-neutral-200 hover:bg-neutral-900"
+              ? "bg-white dark:bg-neutral-800 text-blue-600 dark:text-white font-semibold border border-gray-200 dark:border-neutral-700 shadow-xs"
+              : "text-gray-500 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-neutral-200 hover:bg-gray-100 dark:hover:bg-neutral-900 border border-transparent"
           }`}
         >
           <Palette className="w-4 h-4" />
@@ -351,8 +504,8 @@ export default function SettingsPage() {
       {/* TAB CONTENT: PROFILE DETAILS */}
       {activeSection === "profile" && (
         <div className="space-y-6">
-          <form onSubmit={handleSaveProfile} className="space-y-5 rounded-2xl bg-neutral-900/40 border border-neutral-800 p-5 sm:p-6">
-            <h3 className="font-semibold text-white text-sm border-b border-neutral-800 pb-3">
+          <form onSubmit={handleSaveProfile} className="space-y-5 rounded-2xl bg-white dark:bg-neutral-900/40 border border-gray-200 dark:border-neutral-800 p-5 sm:p-6 shadow-xs">
+            <h3 className="font-semibold text-gray-900 dark:text-white text-sm border-b border-gray-200 dark:border-neutral-800 pb-3">
               {lang === "tr" ? "Geliştirici Kimlik Bilgileri" : "Tərtibatçı Məlumatları"}
             </h3>
 
@@ -505,12 +658,12 @@ export default function SettingsPage() {
 
       {/* TAB CONTENT: LANGUAGE & APPEARANCE (DİL SEÇİMİ) */}
       {activeSection === "language" && (
-        <div className="space-y-5 rounded-2xl bg-neutral-900/40 border border-neutral-800 p-5 sm:p-6">
-          <div className="border-b border-neutral-800 pb-3">
-            <h3 className="font-semibold text-white text-sm">
+        <div className="space-y-5 rounded-2xl bg-white dark:bg-neutral-900/40 border border-gray-200 dark:border-neutral-800 p-5 sm:p-6 shadow-xs">
+          <div className="border-b border-gray-200 dark:border-neutral-800 pb-3">
+            <h3 className="font-semibold text-gray-900 dark:text-white text-sm">
               {t.settings.languageTitle}
             </h3>
-            <p className="text-xs text-neutral-400 mt-1">
+            <p className="text-xs text-gray-500 dark:text-neutral-400 mt-1">
               {t.settings.languageSubtitle}
             </p>
           </div>
@@ -569,8 +722,8 @@ export default function SettingsPage() {
 
       {/* TAB CONTENT: SOCIAL LINKS */}
       {activeSection === "social" && (
-        <form onSubmit={handleSaveProfile} className="space-y-5 rounded-2xl bg-neutral-900/40 border border-neutral-800 p-5 sm:p-6">
-          <h3 className="font-semibold text-white text-sm border-b border-neutral-800 pb-3">
+        <form onSubmit={handleSaveProfile} className="space-y-5 rounded-2xl bg-white dark:bg-neutral-900/40 border border-gray-200 dark:border-neutral-800 p-5 sm:p-6 shadow-xs">
+          <h3 className="font-semibold text-gray-900 dark:text-white text-sm border-b border-gray-200 dark:border-neutral-800 pb-3">
             {lang === "tr" ? "GitHub ve Sosyal Bağlantılar" : "GitHub və Sosial Şəbəkələr"}
           </h3>
 
@@ -632,46 +785,115 @@ export default function SettingsPage() {
 
       {/* TAB CONTENT: SECURITY */}
       {activeSection === "security" && (
-        <form onSubmit={handlePasswordUpdate} className="space-y-5 rounded-2xl bg-neutral-900/40 border border-neutral-800 p-5 sm:p-6">
-          <h3 className="font-semibold text-white text-sm border-b border-neutral-800 pb-3">
-            {lang === "tr" ? "Şifre ve Güvenlik" : "Şifrə və Təhlükəsizlik"}
-          </h3>
-
-          <div className="space-y-4 max-w-md">
-            <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-neutral-300">
-                {lang === "tr" ? "Yeni Şifre" : "Yeni Şifrə"}
-              </label>
-              <input
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full px-3.5 py-2 rounded-xl bg-neutral-900 border border-neutral-800 text-white text-xs sm:text-sm focus:outline-none focus:border-blue-500 font-mono"
-              />
+        <div className="space-y-5">
+          <form onSubmit={handlePasswordUpdate} className="space-y-5 rounded-2xl bg-white dark:bg-neutral-900/40 border border-gray-200 dark:border-neutral-800 p-5 sm:p-6 shadow-xs">
+            <div className="border-b border-gray-200 dark:border-neutral-800 pb-3 flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-gray-900 dark:text-white text-sm flex items-center gap-2">
+                  <KeyRound className="w-4 h-4 text-blue-500" />
+                  <span>{lang === "tr" ? "Şifre ve Güvenlik" : "Şifrə və Təhlükəsizlik"}</span>
+                </h3>
+                <p className="text-xs text-gray-500 dark:text-neutral-400 mt-0.5">
+                  {lang === "tr" ? "Hesabınızın güvenliği için mevcut şifrenizi doğrulayarak yeni bir şifre belirleyin." : "Hesabınızın təhlükəsizliyi üçün köhnə şifrənizi daxil edib yeni şifrə təyin edin."}
+                </p>
+              </div>
             </div>
-          </div>
 
-          <div className="pt-3 border-t border-neutral-800 flex justify-end">
-            <button
-              type="submit"
-              className="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold flex items-center gap-2 transition-colors"
-            >
-              <Lock className="w-3.5 h-3.5" />
-              <span>{lang === "tr" ? "Şifreyi Güncelle" : "Şifrəni Yenilə"}</span>
-            </button>
-          </div>
-        </form>
+            <div className="space-y-4 max-w-md">
+              {/* MEVCUT / KÖHNƏ ŞİFRƏ */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-gray-700 dark:text-neutral-300">
+                  {lang === "tr" ? "Mevcut (Eski) Şifre" : "Köhnə Şifrə"}
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={oldPassword}
+                  onChange={(e) => setOldPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full px-3.5 py-2 rounded-xl bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 text-gray-900 dark:text-white text-xs sm:text-sm focus:outline-none focus:border-blue-500 font-mono transition-colors"
+                />
+              </div>
+
+              {/* YENİ ŞİFRƏ */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-gray-700 dark:text-neutral-300">
+                  {lang === "tr" ? "Yeni Şifre" : "Yeni Şifrə"}
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full px-3.5 py-2 rounded-xl bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 text-gray-900 dark:text-white text-xs sm:text-sm focus:outline-none focus:border-blue-500 font-mono transition-colors"
+                />
+                <p className="text-[11px] text-gray-500 dark:text-neutral-500">
+                  {lang === "tr" ? "En az 6 karakter olmalıdır" : "Ən azı 6 simvoldan ibarət olmalıdır"}
+                </p>
+              </div>
+
+              {/* YENİ ŞİFRƏ TƏKRAR */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-gray-700 dark:text-neutral-300">
+                  {lang === "tr" ? "Yeni Şifre (Tekrar)" : "Yeni Şifrə (Təkrar)"}
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full px-3.5 py-2 rounded-xl bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 text-gray-900 dark:text-white text-xs sm:text-sm focus:outline-none focus:border-blue-500 font-mono transition-colors"
+                />
+              </div>
+            </div>
+
+            {/* ACTION BUTTONS & FORGOT PASSWORD */}
+            <div className="pt-4 border-t border-gray-200 dark:border-neutral-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={handleForgotPassword}
+                disabled={isSendingReset}
+                className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium flex items-center gap-1.5 transition-colors underline underline-offset-4 disabled:opacity-50"
+              >
+                {isSendingReset ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Mail className="w-3.5 h-3.5" />
+                )}
+                <span>
+                  {isSendingReset
+                    ? (lang === "tr" ? "Gmail doğrulaması gönderiliyor..." : "Gmail təsdiqi göndərilir...")
+                    : (lang === "tr" ? "Şifremi unuttum? Gmail ile sıfırla" : "Köhnə şifrəni unutmusunuz? Gmail təsdiqi ilə sıfırlayın")}
+                </span>
+              </button>
+
+              <button
+                type="submit"
+                disabled={isUpdatingPassword}
+                className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-sm disabled:opacity-50"
+              >
+                {isUpdatingPassword ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Lock className="w-3.5 h-3.5" />
+                )}
+                <span>{lang === "tr" ? "Şifreyi Güncelle" : "Şifrəni Yenilə"}</span>
+              </button>
+            </div>
+          </form>
+        </div>
       )}
 
       {/* TAB CONTENT: APPEARANCE & BRAND LOGOS */}
       {activeSection === "appearance" && (
-        <div className="space-y-6 rounded-2xl bg-neutral-900/40 border border-neutral-800 p-5 sm:p-6">
-          <div className="border-b border-neutral-800 pb-3">
-            <h3 className="font-semibold text-white text-sm">
+        <div className="space-y-6 rounded-2xl bg-white dark:bg-neutral-900/40 border border-gray-200 dark:border-neutral-800 p-5 sm:p-6 shadow-xs">
+          <div className="border-b border-gray-200 dark:border-neutral-800 pb-3">
+            <h3 className="font-semibold text-gray-900 dark:text-white text-sm">
               {lang === "tr" ? "Görünüm ve Marka Logoları" : "Görünüş və Brend Loqoları"}
             </h3>
-            <p className="text-xs text-neutral-400 mt-0.5">
+            <p className="text-xs text-gray-500 dark:text-neutral-400 mt-0.5">
               {lang === "tr"
                 ? "Platform temasını seçin ve resmi Deloop marka logolarını inceleyin."
                 : "Platforma rejimini seçin və rəsmi Deloop brend loqolarına baxın."}

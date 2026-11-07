@@ -61,6 +61,21 @@ export function AppShell({ children }: AppShellProps) {
       setMobileSidebarOpen(false);
     };
     syncAuth();
+
+    const handleUserUpdated = () => {
+      const refreshed = localStore.getCurrentUser();
+      setCurrentUser(refreshed);
+    };
+    const handleNotifsUpdated = () => {
+      const notifs = localStore.getNotifications();
+      setUnreadNotifs(notifs.filter((n) => !n.is_read).length);
+    };
+    window.addEventListener("deloop_user_updated", handleUserUpdated);
+    window.addEventListener("deloop_notifications_updated", handleNotifsUpdated);
+    return () => {
+      window.removeEventListener("deloop_user_updated", handleUserUpdated);
+      window.removeEventListener("deloop_notifications_updated", handleNotifsUpdated);
+    };
   }, [pathname]);
 
   const isAuthPage = [
