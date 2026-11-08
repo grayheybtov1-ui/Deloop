@@ -6,7 +6,6 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   FolderGit2,
   Compass,
-  LayoutDashboard,
   PlusCircle,
   Bell,
   MessageSquare,
@@ -81,7 +80,6 @@ export function Sidebar({ user: propUser, isOpen, onClose }: SidebarProps) {
       items: [
         { href: "/projects", label: lang === "az" ? "Ana Axın" : lang === "en" ? "Feed" : "Ana Akış", icon: FolderGit2, badge: null },
         { href: "/developers", label: lang === "az" ? "Developerlər" : lang === "en" ? "Developers" : "Geliştiriciler", icon: Compass, badge: null },
-        { href: "/dashboard", label: lang === "az" ? "İdarəetmə" : lang === "en" ? "Dashboard" : "Dashboard", icon: LayoutDashboard, badge: null },
       ],
     },
     {

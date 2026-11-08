@@ -11,7 +11,6 @@ import {
   User as UserIcon,
   LogOut,
   Settings,
-  LayoutDashboard,
   ShieldCheck,
   ChevronDown,
 } from "lucide-react";
@@ -211,15 +210,6 @@ export function Navbar({ onToggleMobileSidebar, isMobileSidebarOpen }: NavbarPro
                     >
                       <UserIcon className="w-4 h-4 text-gray-400" />
                       <span>{t.nav.profile}</span>
-                    </Link>
-
-                    <Link
-                      href="/dashboard"
-                      onClick={() => setUserDropdownOpen(false)}
-                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors"
-                    >
-                      <LayoutDashboard className="w-4 h-4 text-gray-400" />
-                      <span>Dashboard</span>
                     </Link>
 
                     {user.role === "admin" && (

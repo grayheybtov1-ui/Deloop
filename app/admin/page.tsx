@@ -42,7 +42,7 @@ export default function AdminPage() {
     }
     if (curr.role !== "admin") {
       showToast("Access Denied", "Admin privileges required to view this panel.", "error");
-      router.push("/dashboard");
+      router.push("/projects");
       return;
     }
 
