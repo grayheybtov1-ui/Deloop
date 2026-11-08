@@ -36,6 +36,7 @@ export default function DevelopersPage() {
   }, []);
 
   const filteredProfiles = profiles.filter((p) => {
+    if (p.username.toLowerCase() === "test" || p.id === "caab4ecb-fba8-4435-83d0-ec1c87b5e01e") return false;
     const q = searchQuery.toLowerCase().trim();
     const matchesSearch =
       !q ||

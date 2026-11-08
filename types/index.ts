@@ -133,3 +133,15 @@ export interface PlatformStats {
   total_likes: number;
   new_users_this_month: number;
 }
+
+export interface Story {
+  id: string;
+  user_id: string;
+  username: string;
+  full_name: string;
+  avatar_url?: string;
+  media_url: string;
+  caption?: string;
+  created_at: string;
+  expires_at: string;
+}

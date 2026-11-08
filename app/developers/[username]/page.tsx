@@ -42,6 +42,12 @@ export default function DeveloperProfilePage({ params }: { params: Promise<{ use
     setLang(getSavedLanguage());
     setCurrentUser(localStore.getCurrentUser());
 
+    if (username.toLowerCase() === "test") {
+      setProfile(null);
+      setLoading(false);
+      return;
+    }
+
     async function loadData() {
       try {
         const prof = await dbGetProfileByUsername(username);

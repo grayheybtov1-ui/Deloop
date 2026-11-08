@@ -1,4 +1,4 @@
-import { Profile, Project, Comment, Notification, PlatformStats, DeveloperTitle, Message } from "@/types";
+import { Profile, Project, Comment, Notification, PlatformStats, DeveloperTitle, Message, Story } from "@/types";
 import { supabase, isSupabaseConfigured } from "./client";
 
 class LocalStore {
@@ -7,12 +7,13 @@ class LocalStore {
   private comments: Comment[] = [];
   private notifications: Notification[] = [];
   private messages: Message[] = [];
+  private stories: Story[] = [];
   private bookmarks: { [userId: string]: string[] } = {};
   private currentUser: Profile | null = null; // No one logged in initially
 
   constructor() {
     if (typeof window !== "undefined") {
-      // 1. Clean up any leftover fake mock users
+      // 1. Clean up any leftover fake mock users & test user
       const savedUser = localStorage.getItem("deloop_user");
       if (savedUser) {
         try {
@@ -23,7 +24,9 @@ class LocalStore {
             parsed.username !== "aisha_codes" &&
             parsed.username !== "murad_backend" &&
             parsed.username !== "leyla_ai" &&
-            parsed.id !== "user-1"
+            parsed.username !== "test" &&
+            parsed.id !== "user-1" &&
+            parsed.id !== "caab4ecb-fba8-4435-83d0-ec1c87b5e01e"
           ) {
             this.currentUser = parsed;
           } else {
@@ -34,19 +37,20 @@ class LocalStore {
         }
       }
 
-      // 2. Load real profiles
+      // 2. Load real profiles (filter out mock & test profiles)
       const savedProfiles = localStorage.getItem("deloop_profiles");
       if (savedProfiles) {
         try {
           const parsedProfiles: Profile[] = JSON.parse(savedProfiles);
-          // filter out any old mock profiles
           this.profiles = parsedProfiles.filter(
             p =>
               p.username !== "geray_dev" &&
               p.username !== "aisha_codes" &&
               p.username !== "murad_backend" &&
               p.username !== "leyla_ai" &&
-              p.id !== "user-1"
+              p.username !== "test" &&
+              p.id !== "user-1" &&
+              p.id !== "caab4ecb-fba8-4435-83d0-ec1c87b5e01e"
           );
         } catch (e) {
           this.profiles = [];
@@ -102,6 +106,28 @@ class LocalStore {
         } catch (e) {
           this.bookmarks = {};
         }
+      }
+
+      // 8. Load real stories (filter expired)
+      const savedStories = localStorage.getItem("deloop_stories");
+      if (savedStories) {
+        try {
+          const parsedStories: Story[] = JSON.parse(savedStories);
+          const now = Date.now();
+          this.stories = parsedStories.filter(s => new Date(s.expires_at).getTime() > now);
+        } catch (e) {
+          this.stories = [];
+        }
+      }
+    }
+  }
+
+  private persistStories() {
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("deloop_stories", JSON.stringify(this.stories));
+      } catch (e) {
+        console.warn("Failed to persist stories:", e);
       }
     }
   }
@@ -530,6 +556,22 @@ class LocalStore {
     return newProject;
   }
 
+  addProject(project: Project): Project {
+    const existingIdx = this.projects.findIndex(p => p.id === project.id);
+    if (existingIdx !== -1) {
+      this.projects[existingIdx] = { ...this.projects[existingIdx], ...project };
+    } else {
+      this.projects.unshift(project);
+    }
+    this.persistProjects();
+
+    if (this.currentUser && this.currentUser.id === project.user_id) {
+      this.currentUser.projects_count = (this.currentUser.projects_count || 0) + 1;
+      this.updateProfile(this.currentUser.username, { projects_count: this.currentUser.projects_count });
+    }
+    return project;
+  }
+
   updateProject(id: string, updates: Partial<Project>): Project | null {
     const idx = this.projects.findIndex(p => p.id === id);
     if (idx !== -1) {
@@ -831,6 +873,47 @@ class LocalStore {
     if (typeof window !== "undefined") {
       localStorage.setItem("deloop_bookmarks", JSON.stringify(this.bookmarks));
     }
+  }
+
+  // ==========================================
+  // STORIES (REAL STORIES)
+  // ==========================================
+  getStories(): Story[] {
+    const now = Date.now();
+    this.stories = this.stories.filter(s => new Date(s.expires_at).getTime() > now);
+    return [...this.stories];
+  }
+
+  addStory(storyData: {
+    user_id: string;
+    username: string;
+    full_name: string;
+    avatar_url?: string;
+    media_url: string;
+    caption?: string;
+  }): Story {
+    const newStory: Story = {
+      id: "story-" + Date.now(),
+      ...storyData,
+      created_at: new Date().toISOString(),
+      expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+    };
+    this.stories.unshift(newStory);
+    this.persistStories();
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("deloop_stories_updated"));
+    }
+    return newStory;
+  }
+
+  deleteStory(storyId: string): boolean {
+    const initialLen = this.stories.length;
+    this.stories = this.stories.filter(s => s.id !== storyId);
+    this.persistStories();
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("deloop_stories_updated"));
+    }
+    return this.stories.length < initialLen;
   }
 
   // ==========================================

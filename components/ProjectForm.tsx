@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { FolderGit2, Image, Link as LinkIcon, Code2, CheckCircle2, AlertCircle } from "lucide-react";
+import { FolderGit2, Image, Link as LinkIcon, Code2, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { Project, ProjectStatus } from "@/types";
 import { localStore } from "@/lib/supabase/store";
 import { dbCreateProject, dbUpdateProject } from "@/lib/supabase/db";
@@ -67,23 +67,28 @@ export function ProjectForm({ initialData, isEditing = false }: ProjectFormProps
     try {
       if (isEditing && initialData) {
         await dbUpdateProject(initialData.id, payload);
-        try { localStore.updateProject(initialData.id, payload); } catch { /* local cache sync is best-effort */ }
+        localStore.updateProject(initialData.id, payload);
+        window.dispatchEvent(new Event("deloop_projects_updated"));
         showToast(lang === "tr" ? "Proje Güncellendi" : "Layihə Yeniləndi", `"${title}"`, "success");
         router.push(`/projects/${initialData.id}`);
       } else {
         const created = await dbCreateProject(payload);
-        try { localStore.createProject(payload); } catch { /* local cache sync is best-effort */ }
+        localStore.addProject(created);
+        window.dispatchEvent(new Event("deloop_projects_updated"));
         showToast(lang === "tr" ? "Proje Paylaşıldı" : "Layihə Paylaşıldı", `"${title}"`, "success");
         router.push(`/projects/${created.id}`);
       }
-    } catch {
+    } catch (err: any) {
+      console.warn("Notice saving project to DB, using local store:", err);
       // Fallback to localStore
       if (isEditing && initialData) {
         localStore.updateProject(initialData.id, payload);
+        window.dispatchEvent(new Event("deloop_projects_updated"));
         showToast(lang === "tr" ? "Proje Güncellendi" : "Layihə Yeniləndi", `"${title}"`, "success");
         router.push(`/projects/${initialData.id}`);
       } else {
         const created = localStore.createProject(payload);
+        window.dispatchEvent(new Event("deloop_projects_updated"));
         showToast(lang === "tr" ? "Proje Paylaşıldı" : "Layihə Paylaşıldı", `"${title}"`, "success");
         router.push(`/projects/${created.id}`);
       }
@@ -264,10 +269,19 @@ export function ProjectForm({ initialData, isEditing = false }: ProjectFormProps
         <button
           type="submit"
           disabled={isSubmitting}
-          className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition-all flex items-center gap-2"
+          className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-semibold transition-all flex items-center gap-2 shadow-md active:scale-95"
         >
-          <CheckCircle2 className="w-4 h-4" />
-          <span>{isEditing ? (lang === "tr" ? "Değişiklikleri Kaydet" : "Yadda Saxla") : (lang === "tr" ? "Projeyi Yayınla" : "Paylaş")}</span>
+          {isSubmitting ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>{lang === "tr" ? "Yayınlanıyor..." : "Paylaşılır..."}</span>
+            </>
+          ) : (
+            <>
+              <CheckCircle2 className="w-4 h-4" />
+              <span>{isEditing ? (lang === "tr" ? "Değişiklikleri Kaydet" : "Yadda Saxla") : (lang === "tr" ? "Projeyi Yayınla" : "Paylaş")}</span>
+            </>
+          )}
         </button>
       </div>
     </form>

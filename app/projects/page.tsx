@@ -55,9 +55,26 @@ export default function ProjectsFeedPage() {
     };
     window.addEventListener("deloop_bookmarks_changed", handleBookmarksChanged);
 
+    const handleProjectsUpdated = async () => {
+      try {
+        const projList = await dbGetProjects();
+        setProjects(projList.length > 0 ? projList : localStore.getProjects());
+      } catch {
+        setProjects(localStore.getProjects());
+      }
+    };
+    window.addEventListener("deloop_projects_updated", handleProjectsUpdated);
+
+    const handleUserUpdated = () => {
+      setCurrentUser(localStore.getCurrentUser());
+    };
+    window.addEventListener("deloop_user_updated", handleUserUpdated);
+
     return () => {
       window.removeEventListener("deloop_lang_changed", handleLang);
       window.removeEventListener("deloop_bookmarks_changed", handleBookmarksChanged);
+      window.removeEventListener("deloop_projects_updated", handleProjectsUpdated);
+      window.removeEventListener("deloop_user_updated", handleUserUpdated);
     };
   }, []);
 

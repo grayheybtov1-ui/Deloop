@@ -536,46 +536,46 @@ export default function SettingsPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-neutral-300">
+                <label className="block text-xs font-semibold text-gray-600 dark:text-neutral-300">
                   {lang === "tr" ? "Ad Soyad" : "Ad və Soyad"}
                 </label>
                 <input
                   type="text"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl bg-neutral-900 border border-neutral-800 text-white text-xs sm:text-sm focus:outline-none focus:border-blue-500"
+                  className="w-full px-3.5 py-2 rounded-xl bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 text-gray-900 dark:text-white text-xs sm:text-sm focus:outline-none focus:border-blue-500"
                 />
               </div>
 
               {/* NICKNAME / USERNAME FIELD */}
               <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-neutral-300">
+                <label className="block text-xs font-semibold text-gray-600 dark:text-neutral-300">
                   {lang === "tr" ? "Kullanıcı Adı (Nickname)" : "İstifadəçi Adı (Nickname)"}
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3.5 top-2.5 text-xs font-mono text-neutral-500 font-bold">@</span>
+                  <span className="absolute left-3.5 top-2.5 text-xs font-mono text-gray-400 dark:text-neutral-500 font-bold">@</span>
                   <input
                     type="text"
                     required
                     value={username}
                     onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
                     placeholder="username"
-                    className="w-full pl-8 pr-3.5 py-2 rounded-xl bg-neutral-900 border border-neutral-800 text-white text-xs sm:text-sm focus:outline-none focus:border-blue-500 font-mono"
+                    className="w-full pl-8 pr-3.5 py-2 rounded-xl bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 text-gray-900 dark:text-white text-xs sm:text-sm focus:outline-none focus:border-blue-500 font-mono"
                   />
                 </div>
-                <p className="text-[11px] text-neutral-500 font-mono">
+                <p className="text-[11px] text-gray-500 dark:text-neutral-500 font-mono">
                   {lang === "tr" ? `Profil URL: @${username}` : `Profil URL: @${username}`}
                 </p>
               </div>
 
               <div className="space-y-1.5 md:col-span-2">
-                <label className="block text-xs font-semibold text-neutral-300">
+                <label className="block text-xs font-semibold text-gray-600 dark:text-neutral-300">
                   {lang === "tr" ? "Uzmanlık Alanı" : "İxtisas"}
                 </label>
                 <select
                   value={developerTitle}
                   onChange={(e) => setDeveloperTitle(e.target.value as DeveloperTitle)}
-                  className="w-full px-3.5 py-2 rounded-xl bg-neutral-900 border border-neutral-800 text-white text-xs sm:text-sm focus:outline-none focus:border-blue-500"
+                  className="w-full px-3.5 py-2 rounded-xl bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 text-gray-900 dark:text-white text-xs sm:text-sm focus:outline-none focus:border-blue-500"
                 >
                   <option value="Full-Stack Developer">Full-Stack Developer</option>
                   <option value="Frontend Developer">Frontend Developer</option>
@@ -587,7 +587,7 @@ export default function SettingsPage() {
               </div>
 
               <div className="md:col-span-2 space-y-1.5">
-                <label className="block text-xs font-semibold text-neutral-300">
+                <label className="block text-xs font-semibold text-gray-600 dark:text-neutral-300">
                   {lang === "tr" ? "Konum" : "Məkan"}
                 </label>
                 <input
@@ -595,12 +595,12 @@ export default function SettingsPage() {
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
                   placeholder="Örn: Bakü, Azerbaycan / İstanbul, Türkiye"
-                  className="w-full px-3.5 py-2 rounded-xl bg-neutral-900 border border-neutral-800 text-white text-xs sm:text-sm focus:outline-none focus:border-blue-500"
+                  className="w-full px-3.5 py-2 rounded-xl bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 text-gray-900 dark:text-white text-xs sm:text-sm focus:outline-none focus:border-blue-500"
                 />
               </div>
 
               <div className="md:col-span-2 space-y-1.5">
-                <label className="block text-xs font-semibold text-neutral-300">
+                <label className="block text-xs font-semibold text-gray-600 dark:text-neutral-300">
                   {lang === "tr" ? "Biyografi" : "Bio"}
                 </label>
                 <textarea
@@ -608,12 +608,12 @@ export default function SettingsPage() {
                   value={bio}
                   onChange={(e) => setBio(e.target.value)}
                   placeholder={lang === "tr" ? "Kendinizden ve üzerinde çalıştığınız teknolojilerden bahsedin..." : "Özünüz haqqında qısa məlumat..."}
-                  className="w-full px-3.5 py-2 rounded-xl bg-neutral-900 border border-neutral-800 text-white text-xs sm:text-sm focus:outline-none focus:border-blue-500 leading-relaxed"
+                  className="w-full px-3.5 py-2 rounded-xl bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 text-gray-900 dark:text-white text-xs sm:text-sm focus:outline-none focus:border-blue-500 leading-relaxed"
                 />
               </div>
 
               <div className="md:col-span-2 space-y-1.5">
-                <label className="block text-xs font-semibold text-neutral-300">
+                <label className="block text-xs font-semibold text-gray-600 dark:text-neutral-300">
                   {lang === "tr" ? "Yetenekler (Virgülle ayırın)" : "Bacarıqlar (Vergüllə ayırın)"}
                 </label>
                 <input
@@ -621,7 +621,7 @@ export default function SettingsPage() {
                   value={skillsInput}
                   onChange={(e) => setSkillsInput(e.target.value)}
                   placeholder="React, Next.js, TypeScript, PostgreSQL, Node.js"
-                  className="w-full px-3.5 py-2 rounded-xl bg-neutral-900 border border-neutral-800 text-white text-xs sm:text-sm focus:outline-none focus:border-blue-500 font-mono"
+                  className="w-full px-3.5 py-2 rounded-xl bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 text-gray-900 dark:text-white text-xs sm:text-sm focus:outline-none focus:border-blue-500 font-mono"
                 />
               </div>
             </div>
@@ -752,8 +752,8 @@ export default function SettingsPage() {
 
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-neutral-300 flex items-center gap-1.5">
-                <Github className="w-4 h-4 text-neutral-400" />
+              <label className="block text-xs font-semibold text-gray-600 dark:text-neutral-300 flex items-center gap-1.5">
+                <Github className="w-4 h-4 text-gray-400 dark:text-neutral-400" />
                 GitHub Username
               </label>
               <input
@@ -761,13 +761,13 @@ export default function SettingsPage() {
                 value={githubUsername}
                 onChange={(e) => setGithubUsername(e.target.value)}
                 placeholder="octocat"
-                className="w-full px-3.5 py-2 rounded-xl bg-neutral-900 border border-neutral-800 text-white text-xs sm:text-sm focus:outline-none focus:border-blue-500 font-mono"
+                className="w-full px-3.5 py-2 rounded-xl bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 text-gray-900 dark:text-white text-xs sm:text-sm focus:outline-none focus:border-blue-500 font-mono"
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-neutral-300 flex items-center gap-1.5">
-                <Globe className="w-4 h-4 text-neutral-400" />
+              <label className="block text-xs font-semibold text-gray-600 dark:text-neutral-300 flex items-center gap-1.5">
+                <Globe className="w-4 h-4 text-gray-400 dark:text-neutral-400" />
                 Portfolio / Web Sitesi
               </label>
               <input
@@ -775,13 +775,13 @@ export default function SettingsPage() {
                 value={website}
                 onChange={(e) => setWebsite(e.target.value)}
                 placeholder="https://myportfolio.dev"
-                className="w-full px-3.5 py-2 rounded-xl bg-neutral-900 border border-neutral-800 text-white text-xs sm:text-sm focus:outline-none focus:border-blue-500"
+                className="w-full px-3.5 py-2 rounded-xl bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 text-gray-900 dark:text-white text-xs sm:text-sm focus:outline-none focus:border-blue-500"
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-neutral-300 flex items-center gap-1.5">
-                <Linkedin className="w-4 h-4 text-neutral-400" />
+              <label className="block text-xs font-semibold text-gray-600 dark:text-neutral-300 flex items-center gap-1.5">
+                <Linkedin className="w-4 h-4 text-gray-400 dark:text-neutral-400" />
                 LinkedIn URL
               </label>
               <input
@@ -789,7 +789,7 @@ export default function SettingsPage() {
                 value={linkedinUrl}
                 onChange={(e) => setLinkedinUrl(e.target.value)}
                 placeholder="https://linkedin.com/in/username"
-                className="w-full px-3.5 py-2 rounded-xl bg-neutral-900 border border-neutral-800 text-white text-xs sm:text-sm focus:outline-none focus:border-blue-500"
+                className="w-full px-3.5 py-2 rounded-xl bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 text-gray-900 dark:text-white text-xs sm:text-sm focus:outline-none focus:border-blue-500"
               />
             </div>
           </div>
@@ -925,7 +925,7 @@ export default function SettingsPage() {
 
           {/* THEME SELECTOR */}
           <div className="space-y-3">
-            <label className="block text-xs font-semibold text-neutral-300 font-mono uppercase tracking-wider">
+            <label className="block text-xs font-semibold text-gray-600 dark:text-neutral-300 font-mono uppercase tracking-wider">
               {lang === "tr" ? "Tema Tercihi" : "Rejim Seçimi"}
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg">
@@ -935,7 +935,7 @@ export default function SettingsPage() {
                 className={`p-4 rounded-xl border flex items-center gap-3.5 transition-all text-left ${
                   !isDark
                     ? "bg-white text-gray-900 border-blue-500 ring-2 ring-blue-500/30 shadow-md"
-                    : "bg-neutral-900/80 text-neutral-300 border-neutral-800 hover:border-neutral-700"
+                    : "bg-gray-100 dark:bg-neutral-900/80 text-gray-600 dark:text-neutral-300 border-gray-200 dark:border-neutral-800 hover:border-gray-300 dark:hover:border-neutral-700"
                 }`}
               >
                 <div className="w-9 h-9 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
@@ -957,7 +957,7 @@ export default function SettingsPage() {
                 className={`p-4 rounded-xl border flex items-center gap-3.5 transition-all text-left ${
                   isDark
                     ? "bg-neutral-950 text-white border-blue-500 ring-2 ring-blue-500/30 shadow-md"
-                    : "bg-neutral-900/80 text-neutral-300 border-neutral-800 hover:border-neutral-700"
+                    : "bg-gray-100 dark:bg-neutral-900/80 text-gray-600 dark:text-neutral-300 border-gray-200 dark:border-neutral-800 hover:border-gray-300 dark:hover:border-neutral-700"
                 }`}
               >
                 <div className="w-9 h-9 rounded-lg bg-blue-950/80 text-blue-400 flex items-center justify-center shrink-0">
@@ -976,12 +976,12 @@ export default function SettingsPage() {
           </div>
 
           {/* OFFICIAL LOGO ASSETS SHOWCASE */}
-          <div className="pt-4 border-t border-neutral-800 space-y-4">
+          <div className="pt-4 border-t border-gray-200 dark:border-neutral-800 space-y-4">
             <div>
-              <h4 className="text-xs font-semibold text-neutral-200 font-mono uppercase tracking-wider">
+              <h4 className="text-xs font-semibold text-gray-700 dark:text-neutral-200 font-mono uppercase tracking-wider">
                 {lang === "tr" ? "Deloop Resmi Varlıklar" : "Deloop Rəsmi Brend Loqoları"}
               </h4>
-              <p className="text-[11px] text-neutral-400 mt-0.5">
+              <p className="text-[11px] text-gray-500 dark:text-neutral-400 mt-0.5">
                 {lang === "tr"
                   ? "Tüm platformda kullanılan 3 özel logo tasarımı:"
                   : "Platformada istifadə olunan 3 xüsusi loqo dizaynı:"}

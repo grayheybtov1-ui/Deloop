@@ -214,10 +214,12 @@ export async function dbGetProfile(userId: string): Promise<Profile | null> {
 }
 
 export async function dbGetProfileByUsername(username: string): Promise<Profile | null> {
+  if (username.toLowerCase() === "test") return null;
   const { data, error } = await supabase
     .from("profiles")
     .select("*")
     .ilike("username", username)
+    .neq("username", "test")
     .single();
   if (error || !data) return null;
   return mapProfile(data);
@@ -227,6 +229,7 @@ export async function dbGetAllProfiles(): Promise<Profile[]> {
   const { data, error } = await supabase
     .from("profiles")
     .select("*")
+    .neq("username", "test")
     .order("created_at", { ascending: false });
   if (error || !data) return [];
   return data.map(mapProfile);
@@ -437,15 +440,19 @@ export async function dbCreateProject(projectData: {
   status: string;
 }): Promise<Project> {
   const session = await dbGetCurrentSession();
-  if (!session?.user) throw new Error("Layihə paylaşmaq üçün zəhmət olmasa daxil olun.");
+  const userId = session?.user?.id || localStore.getCurrentUser()?.id;
+  if (!userId) throw new Error("Layihə paylaşmaq üçün zəhmət olmasa daxil olun.");
 
   const { data, error } = await supabase
     .from("projects")
-    .insert({ ...projectData, user_id: session.user.id, views_count: 0 })
+    .insert({ ...projectData, user_id: userId, views_count: 0 })
     .select("*, profile:profiles(*)")
-    .single();
+    .maybeSingle();
 
-  if (error) throw error;
+  if (error || !data) {
+    if (error) console.warn("Supabase project insert notice:", error);
+    throw error || new Error("Failed to create project");
+  }
   return mapProject(data, 0, 0, false);
 }
 
@@ -865,7 +872,11 @@ function mapProject(data: any, likesCount: number, commentsCount: number, userHa
     comments_count: commentsCount,
     created_at: data.created_at,
     updated_at: data.updated_at,
-    profile: data.profile ? mapProfile(data.profile) : undefined,
+    profile: data.profile
+      ? mapProfile(data.profile)
+      : (typeof window !== "undefined"
+          ? localStore.getProfileById(data.user_id) || (localStore.getCurrentUser()?.id === data.user_id ? localStore.getCurrentUser()! : undefined)
+          : undefined),
     user_has_liked: userHasLiked,
   };
 }
