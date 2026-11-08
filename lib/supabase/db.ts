@@ -247,37 +247,73 @@ export async function dbUpdateProfile(userId: string, updates: Partial<Profile>)
   if (updates.username) {
     updatePayload.username = updates.username.toLowerCase().trim();
   }
-  if (updates.skills) {
-    updatePayload.skills = updates.skills;
+
+  let data: any = null;
+  let error: any = null;
+
+  // Try updating with skills if provided
+  if (updates.skills && Array.isArray(updates.skills)) {
+    const res = await supabase
+      .from("profiles")
+      .update({ ...updatePayload, skills: updates.skills })
+      .eq("id", userId)
+      .select()
+      .maybeSingle();
+
+    if (!res.error && res.data) {
+      data = res.data;
+    } else if (res.error && (res.error.code === "PGRST204" || res.error.message?.includes("skills"))) {
+      // Supabase instance doesn't have the skills column on profiles — retry without it
+      const fallback = await supabase
+        .from("profiles")
+        .update(updatePayload)
+        .eq("id", userId)
+        .select()
+        .maybeSingle();
+      data = fallback.data;
+      error = fallback.error;
+    } else {
+      error = res.error;
+    }
+  } else {
+    const res = await supabase
+      .from("profiles")
+      .update(updatePayload)
+      .eq("id", userId)
+      .select()
+      .maybeSingle();
+    data = res.data;
+    error = res.error;
   }
 
-  const { data, error } = await supabase
-    .from("profiles")
-    .update(updatePayload)
-    .eq("id", userId)
-    .select()
-    .single();
-
-  if (error || !data) {
-    if (error) console.error("Error updating profile in Supabase:", error);
-    return null;
+  if (error) {
+    console.warn("Notice updating profile in Supabase:", error);
   }
 
   // Also update metadata in Supabase auth if username or full_name changed
-  if (updates.username || updates.full_name) {
+  if (updates.username || updates.full_name || updates.avatar_url) {
     try {
-      await supabase.auth.updateUser({
-        data: {
-          username: updates.username?.toLowerCase().trim(),
-          full_name: updates.full_name,
-        },
-      });
+      const authMeta: any = {};
+      if (updates.username) authMeta.username = updates.username.toLowerCase().trim();
+      if (updates.full_name) authMeta.full_name = updates.full_name;
+      if (updates.avatar_url && !updates.avatar_url.startsWith("data:")) authMeta.avatar_url = updates.avatar_url;
+      if (Object.keys(authMeta).length > 0) {
+        await supabase.auth.updateUser({ data: authMeta });
+      }
     } catch {
       // ignore
     }
   }
 
-  return mapProfile(data);
+  if (data) {
+    const mapped = mapProfile(data);
+    if (updates.skills && (!mapped.skills || mapped.skills.length === 0)) {
+      mapped.skills = updates.skills;
+    }
+    return mapped;
+  }
+
+  return null;
 }
 
 // ==========================================

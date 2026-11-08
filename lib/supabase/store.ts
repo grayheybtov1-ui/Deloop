@@ -179,6 +179,17 @@ class LocalStore {
 
   setCurrentUser(user: Profile | null) {
     this.currentUser = user;
+    if (user) {
+      const idx = this.profiles.findIndex(
+        p => p.id === user.id || p.username.toLowerCase() === user.username.toLowerCase()
+      );
+      if (idx !== -1) {
+        this.profiles[idx] = { ...this.profiles[idx], ...user };
+      } else {
+        this.profiles.push({ ...user });
+      }
+      this.persistProfiles();
+    }
     this.persistUser();
   }
 
@@ -332,79 +343,114 @@ class LocalStore {
   }
 
   updateProfile(idOrUsername: string, updates: Partial<Profile> & { password?: string }): Profile | null {
-    const idx = this.profiles.findIndex(
+    let idx = this.profiles.findIndex(
       p => p.id === idOrUsername || p.username.toLowerCase() === idOrUsername.toLowerCase()
     );
-    if (idx !== -1) {
-      const oldUsername = this.profiles[idx].username;
-      const newUsername = updates.username ? updates.username.toLowerCase().trim() : oldUsername;
 
-      this.profiles[idx] = {
-        ...this.profiles[idx],
-        ...updates,
-        username: newUsername,
-      };
-
-      if (updates.password) {
-        (this.profiles[idx] as any).password = updates.password;
-      }
-
-      this.persistProfiles();
-
-      // If username or full name changed, update them in related entities
-      if (oldUsername.toLowerCase() !== newUsername.toLowerCase() || updates.full_name) {
-        const userId = this.profiles[idx].id;
-        this.projects.forEach(p => {
-          if (p.user_id === userId && p.profile) {
-            p.profile.username = newUsername;
-            if (updates.full_name) p.profile.full_name = updates.full_name;
-            if (updates.avatar_url) p.profile.avatar_url = updates.avatar_url;
-          }
-        });
-        this.persistProjects();
-
-        this.comments.forEach(c => {
-          if (c.user_id === userId && c.profile) {
-            c.profile.username = newUsername;
-            if (updates.full_name) c.profile.full_name = updates.full_name;
-            if (updates.avatar_url) c.profile.avatar_url = updates.avatar_url;
-          }
-        });
-        this.persistComments();
-
-        this.notifications.forEach(n => {
-          if (n.actor_id === userId && n.actor) {
-            n.actor.username = newUsername;
-            if (updates.full_name) n.actor.full_name = updates.full_name;
-            if (updates.avatar_url) n.actor.avatar_url = updates.avatar_url;
-          }
-        });
-        this.persistNotifications();
-
-        this.messages.forEach(m => {
-          if (m.sender_id === userId && m.sender) {
-            m.sender.username = newUsername;
-            if (updates.full_name) m.sender.full_name = updates.full_name;
-          }
-          if (m.receiver_id === userId && m.receiver) {
-            m.receiver.username = newUsername;
-            if (updates.full_name) m.receiver.full_name = updates.full_name;
-          }
-        });
-        this.persistMessages();
-      }
-
+    if (idx === -1) {
       if (
         this.currentUser &&
-        (this.currentUser.id === this.profiles[idx].id ||
-          this.currentUser.username.toLowerCase() === oldUsername.toLowerCase())
+        (this.currentUser.id === idOrUsername ||
+          this.currentUser.username.toLowerCase() === idOrUsername.toLowerCase())
       ) {
-        this.currentUser = this.profiles[idx];
-        this.persistUser();
+        this.profiles.push({ ...this.currentUser });
+        idx = this.profiles.length - 1;
+      } else {
+        const newProf: Profile = {
+          id: idOrUsername.startsWith("usr-") || idOrUsername.includes("-") ? idOrUsername : "usr-" + Date.now(),
+          username: updates.username || idOrUsername,
+          full_name: updates.full_name || idOrUsername,
+          developer_title: updates.developer_title || "Full-Stack Developer",
+          avatar_url: updates.avatar_url,
+          bio: updates.bio,
+          location: updates.location,
+          website: updates.website,
+          github_username: updates.github_username,
+          linkedin_url: updates.linkedin_url,
+          skills: updates.skills || [],
+          role: updates.role || "developer",
+          created_at: new Date().toISOString(),
+        };
+        this.profiles.push(newProf);
+        idx = this.profiles.length - 1;
       }
-      return this.profiles[idx];
     }
-    return null;
+
+    const oldUsername = this.profiles[idx].username;
+    const newUsername = updates.username ? updates.username.toLowerCase().trim() : oldUsername;
+
+    this.profiles[idx] = {
+      ...this.profiles[idx],
+      ...updates,
+      username: newUsername,
+    };
+
+    if (updates.password) {
+      (this.profiles[idx] as any).password = updates.password;
+    }
+
+    this.persistProfiles();
+
+    // If username, full name, or avatar changed, update them in related entities
+    if (
+      oldUsername.toLowerCase() !== newUsername.toLowerCase() ||
+      updates.full_name ||
+      updates.avatar_url
+    ) {
+      const userId = this.profiles[idx].id;
+      this.projects.forEach(p => {
+        if (p.user_id === userId && p.profile) {
+          p.profile.username = newUsername;
+          if (updates.full_name) p.profile.full_name = updates.full_name;
+          if (updates.avatar_url) p.profile.avatar_url = updates.avatar_url;
+        }
+      });
+      this.persistProjects();
+
+      this.comments.forEach(c => {
+        if (c.user_id === userId && c.profile) {
+          c.profile.username = newUsername;
+          if (updates.full_name) c.profile.full_name = updates.full_name;
+          if (updates.avatar_url) c.profile.avatar_url = updates.avatar_url;
+        }
+      });
+      this.persistComments();
+
+      this.notifications.forEach(n => {
+        if (n.actor_id === userId && n.actor) {
+          n.actor.username = newUsername;
+          if (updates.full_name) n.actor.full_name = updates.full_name;
+          if (updates.avatar_url) n.actor.avatar_url = updates.avatar_url;
+        }
+      });
+      this.persistNotifications();
+
+      this.messages.forEach(m => {
+        if (m.sender_id === userId && m.sender) {
+          m.sender.username = newUsername;
+          if (updates.full_name) m.sender.full_name = updates.full_name;
+        }
+        if (m.receiver_id === userId && m.receiver) {
+          m.receiver.username = newUsername;
+          if (updates.full_name) m.receiver.full_name = updates.full_name;
+        }
+      });
+      this.persistMessages();
+    }
+
+    if (
+      this.currentUser &&
+      (this.currentUser.id === this.profiles[idx].id ||
+        this.currentUser.username.toLowerCase() === oldUsername.toLowerCase() ||
+        this.currentUser.username.toLowerCase() === newUsername.toLowerCase())
+    ) {
+      this.currentUser = {
+        ...this.currentUser,
+        ...this.profiles[idx],
+      };
+      this.persistUser();
+    }
+    return this.profiles[idx];
   }
 
   deleteAccount(userId: string): boolean {

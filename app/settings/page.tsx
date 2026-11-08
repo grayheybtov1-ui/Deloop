@@ -59,6 +59,7 @@ export default function SettingsPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSendingReset, setIsSendingReset] = useState(false);
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
 
   // DELETE ACCOUNT MODAL STATE
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -135,7 +136,7 @@ export default function SettingsPage() {
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    if (!user || isSavingProfile) return;
 
     const cleanUsername = username.trim().toLowerCase().replace(/[^a-z0-9_]/g, "");
     if (cleanUsername.length < 3) {
@@ -147,121 +148,133 @@ export default function SettingsPage() {
       return;
     }
 
-    // Check username uniqueness if changed
-    if (cleanUsername !== user.username.toLowerCase()) {
-      const isTakenLocally = localStore.getProfiles().some(
-        (p) => p.id !== user.id && p.username.toLowerCase() === cleanUsername
-      );
-      if (isTakenLocally) {
-        showToast(
-          lang === "tr" ? "Bu kullanıcı adı zaten alınmış" : "Bu istifadəçi adı artıq götürülüb",
-          lang === "tr" ? "Lütfen başka bir kullanıcı adı seçin" : "Zəhmət olmasa başqa ad seçin",
-          "error"
+    setIsSavingProfile(true);
+
+    try {
+      // Check username uniqueness if changed
+      if (cleanUsername !== user.username.toLowerCase()) {
+        const isTakenLocally = localStore.getProfiles().some(
+          (p) => p.id !== user.id && p.username.toLowerCase() === cleanUsername
         );
-        return;
-      }
-
-      try {
-        const { data: existingUser } = await supabase
-          .from("profiles")
-          .select("id")
-          .ilike("username", cleanUsername)
-          .neq("id", user.id)
-          .maybeSingle();
-
-        if (existingUser) {
+        if (isTakenLocally) {
           showToast(
             lang === "tr" ? "Bu kullanıcı adı zaten alınmış" : "Bu istifadəçi adı artıq götürülüb",
             lang === "tr" ? "Lütfen başka bir kullanıcı adı seçin" : "Zəhmət olmasa başqa ad seçin",
             "error"
           );
+          setIsSavingProfile(false);
           return;
         }
-      } catch {
-        // ignore
-      }
-    }
 
-    const skillsArray = skillsInput
-      .split(",")
-      .map((s) => s.trim())
-      .filter((s) => s.length > 0);
+        try {
+          const { data: existingUser } = await supabase
+            .from("profiles")
+            .select("id")
+            .ilike("username", cleanUsername)
+            .neq("id", user.id)
+            .maybeSingle();
 
-    // If the avatar is a base64 data URL, try to upload to Supabase Storage.
-    // If storage isn't configured, keep the base64 for localStorage only and
-    // send the previous (remote) URL to Supabase so the DB update doesn't fail.
-    const isBase64Avatar = avatarUrl.startsWith("data:");
-    let remoteAvatarUrl: string | undefined = isBase64Avatar ? (user.avatar_url || undefined) : (avatarUrl.trim() || undefined);
-
-    if (isBase64Avatar) {
-      try {
-        // Convert base64 to Blob
-        const res = await fetch(avatarUrl);
-        const blob = await res.blob();
-        const ext = blob.type.split("/")[1] || "jpg";
-        const fileName = `avatars/${user.id}_${Date.now()}.${ext}`;
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from("avatars")
-          .upload(fileName, blob, { upsert: true, contentType: blob.type });
-        if (!uploadError && uploadData) {
-          const { data: publicUrlData } = supabase.storage.from("avatars").getPublicUrl(fileName);
-          remoteAvatarUrl = publicUrlData?.publicUrl || remoteAvatarUrl;
+          if (existingUser) {
+            showToast(
+              lang === "tr" ? "Bu kullanıcı adı zaten alınmış" : "Bu istifadəçi adı artıq götürülüb",
+              lang === "tr" ? "Lütfen başka bir kullanıcı adı seçin" : "Zəhmət olmasa başqa ad seçin",
+              "error"
+            );
+            setIsSavingProfile(false);
+            return;
+          }
+        } catch {
+          // ignore
         }
-      } catch {
-        // Storage not set up — keep old remote URL for Supabase, base64 for local
       }
-    }
 
-    // Payload for Supabase (never base64 — too large for REST API)
-    const remotePayload = {
-      username: cleanUsername,
-      full_name: fullName.trim(),
-      avatar_url: remoteAvatarUrl,
-      developer_title: developerTitle,
-      bio: bio.trim(),
-      location: location.trim(),
-      skills: skillsArray,
-      github_username: githubUsername.trim(),
-      website: website.trim(),
-      linkedin_url: linkedinUrl.trim(),
-    };
+      const skillsArray = skillsInput
+        .split(",")
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
 
-    // Payload for localStorage (can include base64)
-    const localPayload = {
-      ...remotePayload,
-      avatar_url: avatarUrl.trim() || remoteAvatarUrl,
-    };
+      // Final avatar URL (supports base64, remote URL, or storage)
+      let finalAvatarUrl = avatarUrl.trim();
 
-    // 1. Try to save to Supabase
-    let supabaseSaved = false;
-    try {
-      const updated = await dbUpdateProfile(user.id, remotePayload);
-      if (updated) {
-        supabaseSaved = true;
-        // Merge base64 avatar into the returned profile for local display
-        const mergedProfile: typeof updated = {
-          ...updated,
-          avatar_url: localPayload.avatar_url || updated.avatar_url,
-        };
-        setUser(mergedProfile);
-        localStore.setCurrentUser(mergedProfile);
-        localStore.updateProfile(user.id, localPayload);
+      // If avatar is base64, try to upload to Supabase Storage if bucket exists
+      if (finalAvatarUrl.startsWith("data:")) {
+        try {
+          const res = await fetch(finalAvatarUrl);
+          const blob = await res.blob();
+          const ext = blob.type.split("/")[1] || "jpg";
+          const fileName = `avatars/${user.id}_${Date.now()}.${ext}`;
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from("avatars")
+            .upload(fileName, blob, { upsert: true, contentType: blob.type });
+          if (!uploadError && uploadData) {
+            const { data: publicUrlData } = supabase.storage.from("avatars").getPublicUrl(fileName);
+            if (publicUrlData?.publicUrl) {
+              finalAvatarUrl = publicUrlData.publicUrl;
+            }
+          }
+        } catch {
+          // If storage bucket is not available, finalAvatarUrl stays base64 data URL
+        }
       }
-    } catch {
-      // Supabase failed — handled below
-    }
 
-    // 2. Always persist to localStorage (guarantees changes survive page reload)
-    if (!supabaseSaved) {
-      const localUpdated = localStore.updateProfile(user.id, localPayload);
-      if (localUpdated) {
-        setUser(localUpdated);
-        localStore.setCurrentUser(localUpdated);
+      const payload = {
+        username: cleanUsername,
+        full_name: fullName.trim(),
+        avatar_url: finalAvatarUrl,
+        developer_title: developerTitle,
+        bio: bio.trim(),
+        location: location.trim(),
+        skills: skillsArray,
+        github_username: githubUsername.trim(),
+        website: website.trim(),
+        linkedin_url: linkedinUrl.trim(),
+      };
+
+      // 1. Save to Supabase DB
+      let updatedProfile: Profile | null = null;
+      try {
+        updatedProfile = await dbUpdateProfile(user.id, payload);
+      } catch (err) {
+        console.warn("Supabase profile save notice:", err);
       }
-    }
 
-    window.dispatchEvent(new Event("deloop_user_updated"));
-    showToast(t.settings.savedToast, undefined, "success");
+      // 2. Always persist to localStore & localStorage
+      localStore.updateProfile(user.id, {
+        ...payload,
+        avatar_url: finalAvatarUrl,
+      });
+
+      const mergedProfile: Profile = {
+        ...user,
+        ...payload,
+        ...(updatedProfile || {}),
+        avatar_url: finalAvatarUrl || updatedProfile?.avatar_url || user.avatar_url,
+        skills: skillsArray,
+      };
+
+      setUser(mergedProfile);
+      setUsername(cleanUsername);
+      setAvatarUrl(mergedProfile.avatar_url || "");
+      localStore.setCurrentUser(mergedProfile);
+
+      // Trigger app-wide sync
+      window.dispatchEvent(new Event("deloop_user_updated"));
+      window.dispatchEvent(new Event("deloop_projects_updated"));
+
+      showToast(
+        lang === "tr" ? "Profil başarıyla kaydedildi" : "Profil uğurla yadda saxlanıldı",
+        undefined,
+        "success"
+      );
+    } catch (err: any) {
+      showToast(
+        err?.message || (lang === "tr" ? "Profil kaydedilemedi" : "Profil yadda saxlanıla bilmədi"),
+        undefined,
+        "error"
+      );
+    } finally {
+      setIsSavingProfile(false);
+    }
   };
 
   const handlePasswordUpdate = async (e: React.FormEvent) => {
@@ -616,10 +629,20 @@ export default function SettingsPage() {
             <div className="pt-3 border-t border-neutral-800 flex justify-end">
               <button
                 type="submit"
-                className="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold flex items-center gap-2 transition-colors"
+                disabled={isSavingProfile}
+                className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-semibold flex items-center gap-2 transition-all shadow-md active:scale-95"
               >
-                <Save className="w-3.5 h-3.5" />
-                <span>{t.settings.save}</span>
+                {isSavingProfile ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>{lang === "tr" ? "Kaydediliyor..." : "Yadda saxlanılır..."}</span>
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-3.5 h-3.5" />
+                    <span>{t.settings.save}</span>
+                  </>
+                )}
               </button>
             </div>
           </form>

@@ -523,6 +523,7 @@ export function ImageUploader({
 
         {/* PREVIEW IF HAS VALUE */}
         {value ? (
+          <>
           <div className="relative group rounded-xl overflow-hidden border border-gray-200 dark:border-neutral-800 bg-gray-100 dark:bg-neutral-900">
             <div
               className={`w-full ${
@@ -574,6 +575,34 @@ export function ImageUploader({
               className="hidden"
             />
           </div>
+
+          {/* VISIBLE CONTROLS FOR MOBILE AND QUICK ACCESS */}
+          <div className="flex items-center gap-2 pt-1">
+            <button
+              type="button"
+              onClick={() => setCropImageSrc(value)}
+              className="px-3 py-1.5 rounded-lg bg-blue-600/15 hover:bg-blue-600/25 text-blue-600 dark:text-blue-400 border border-blue-500/30 text-xs font-medium transition-colors flex items-center gap-1.5 active:scale-95"
+            >
+              <CropIcon className="w-3.5 h-3.5" />
+              <span>{t.crop}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-300 border border-gray-200 dark:border-neutral-700 text-xs font-medium transition-colors active:scale-95"
+            >
+              {t.change}
+            </button>
+            <button
+              type="button"
+              onClick={() => onChange("")}
+              className="px-2.5 py-1.5 rounded-lg bg-red-600/10 hover:bg-red-600/20 text-red-600 dark:text-red-400 border border-red-500/30 text-xs font-medium transition-colors flex items-center gap-1 active:scale-95"
+            >
+              <X className="w-3.5 h-3.5" />
+              <span>{t.remove}</span>
+            </button>
+          </div>
+          </>
         ) : mode === "file" ? (
           /* DRAG & DROP ZONE */
           <div
