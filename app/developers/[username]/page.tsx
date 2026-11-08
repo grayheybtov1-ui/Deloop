@@ -21,6 +21,7 @@ import { dbGetProfileByUsername, dbGetProjects, dbToggleFollow } from "@/lib/sup
 import { GitHubStatsCard } from "@/components/GitHubStatsCard";
 import { useToast } from "@/components/Toast";
 import { ProjectCard } from "@/components/ProjectCard";
+import { ZoomableAvatar } from "@/components/ZoomableAvatar";
 import { getSavedLanguage, translations, Language } from "@/lib/i18n";
 
 export default function DeveloperProfilePage({ params }: { params: Promise<{ username: string }> }) {
@@ -154,11 +155,13 @@ export default function DeveloperProfilePage({ params }: { params: Promise<{ use
       <div className="w-full px-2 sm:px-6">
         <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 sm:gap-12">
           
-          {/* PROFILE AVATAR — Clean, natural circular avatar */}
+          {/* PROFILE AVATAR — Clean, natural circular avatar with Hold/Click to Zoom */}
           <div className="shrink-0">
-            <img
+            <ZoomableAvatar
               src={profile.avatar_url || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300"}
               alt={profile.full_name}
+              fullName={profile.full_name}
+              username={profile.username}
               className="w-24 h-24 sm:w-36 sm:h-36 rounded-full object-cover border border-neutral-700/60 shadow-sm"
             />
           </div>
