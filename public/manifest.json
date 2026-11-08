@@ -1,21 +1,29 @@
 {
-  "name": "Deloop — Developer Social Network",
+  "name": "Deloop – Developer Social Network",
   "short_name": "Deloop",
-  "description": "Developers üçün sosial platforma. Layihələrini paylaş, developer-lərlə əlaqə qur.",
+  "description": "Developers üçün sosial platforma. Layihələrini paylaş, developerlərlə əlaqə qur.",
   "start_url": "/projects",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
+  "orientation": "portrait",
+  "background_color": "#0b0f17",
   "theme_color": "#2563eb",
+  "lang": "az",
+  "categories": ["social", "productivity", "developer tools"],
   "icons": [
     {
       "src": "/app-logo.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
       "src": "/app-logo.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
-  ]
+  ],
+  "screenshots": [],
+  "prefer_related_applications": false
 }

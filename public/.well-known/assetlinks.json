@@ -1,0 +1,13 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.deloop.app",
+      "sha256_cert_fingerprints": [
+        "BURAYA_BUBBLEWRAP_SHA256_YAZILACAQ"
+      ]
+    }
+  }
+]
+
